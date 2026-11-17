@@ -1,4 +1,4 @@
-import { fetchCatalogProducts } from '../../scripts/catalog-service.js';
+import { fetchCatalogProducts, getBrandName } from '../../scripts/catalog-service.js';
 import { getStoredVehicle } from '../../scripts/vehicle-lookup.js';
 import { getConfig } from '../../scripts/config.js';
 
@@ -214,6 +214,8 @@ export default async function decorate(block) {
          </div>`
       : '';
 
+    const displayBrand = getBrandName(p) || brandInfo?.title || 'GSF QUALITY APPROVED';
+
     card.innerHTML = `
       <div class="card-media">
         <a href="/pdp.html?sku=${encodeURIComponent(p.sku)}">
@@ -221,7 +223,7 @@ export default async function decorate(block) {
         </a>
       </div>
       <div class="card-body">
-        ${brandInfo?.title ? `<span class="card-brand">${brandInfo.title}</span>` : '<span class="card-brand">GSF QUALITY APPROVED</span>'}
+        <span class="card-brand">${displayBrand}</span>
         <h4 class="card-title">
           <a href="/pdp.html?sku=${encodeURIComponent(p.sku)}">${p.name}</a>
         </h4>
@@ -252,15 +254,27 @@ export default async function decorate(block) {
 
   function renderFacets(aggregations) {
     facetsContainer.innerHTML = '';
-    if (!aggregations || aggregations.length === 0) {
+
+    // Filter to ONLY basic filter types (Brand & Price).
+    // Strictly removes Category, Product Group, and all obscure technical filters.
+    // Shows Brand filter only if at least 2 distinct brands are eligible.
+    const allowedCodes = ['brand', 'manufacturer', 'price', 'quality'];
+    const validAggs = (aggregations || []).filter((agg) => {
+      const code = (agg.attribute_code || '').toLowerCase();
+      const label = (agg.label || '').toLowerCase();
+      if (code.includes('category') || label.includes('category')) return false;
+      if (code.includes('product_group') || label.includes('product group')) return false;
+      if (!allowedCodes.includes(code) && !label.includes('brand') && !label.includes('price')) return false;
+      return agg.options && agg.options.length >= 2;
+    });
+
+    if (validAggs.length === 0) {
       facetsContainer.innerHTML = '<p class="no-facets">No filters available for current selection.</p>';
+      renderActiveFilterPills();
       return;
     }
 
-    aggregations.forEach((agg) => {
-      // Filter out empty or category aggregations from sidebar facet list
-      if (!agg.options || agg.options.length === 0 || agg.attribute_code === 'category_id') return;
-
+    validAggs.forEach((agg) => {
       const group = document.createElement('div');
       group.className = 'facet-group';
 
@@ -300,7 +314,7 @@ export default async function decorate(block) {
       const list = document.createElement('ul');
       list.className = 'facet-list';
 
-      agg.options.slice(0, 20).forEach((opt) => {
+      agg.options.forEach((opt) => {
         const item = document.createElement('li');
         item.className = 'facet-item';
 
