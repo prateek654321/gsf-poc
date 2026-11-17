@@ -12,14 +12,17 @@
   <header class="header"></header>
 
   <main>
-    <!-- Section 1: Hero & VRM Search Block -->
+    <!-- Section 1: Hero & Vehicle Search Block -->
     <div class="section hero-section">
-      <div class="vrm-search block"></div>
+      <div class="vehicle-search block"></div>
     </div>
 
     <!-- Section 2: Popular Categories -->
     <div class="section categories-section">
-      <h2>Browse by Category</h2>
+      <div class="section-title-bar">
+        <h2>Browse by Category</h2>
+        <a href="/categories.html" class="view-all-link">View All Categories →</a>
+      </div>
       <div class="category-tiles">
         <a href="/plp.html?category_id=5278" class="category-tile">
           <span class="cat-icon">🔧</span>
@@ -48,9 +51,12 @@
       </div>
     </div>
 
-    <!-- Section 3: Featured Products Listing -->
+    <!-- Section 3: Popular Replacement Parts -->
     <div class="section products-section">
-      <h2>Popular Replacement Parts</h2>
+      <div class="section-title-bar">
+        <h2>Popular Replacement Parts</h2>
+        <a href="/plp.html" class="view-all-link">Browse All Catalog Parts →</a>
+      </div>
       <div class="product-list block"></div>
     </div>
   </main>
@@ -58,11 +64,22 @@
   <footer class="footer"></footer>
 
   <style>
+    .section-title-bar {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-top: 1.5rem;
+    }
+    .view-all-link {
+      font-weight: 700;
+      font-size: 0.9375rem;
+      color: var(--color-brand-primary);
+    }
     .category-tiles {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 1rem;
-      margin: 1.5rem 0 3rem;
+      margin: 1rem 0 2.5rem;
     }
     @media (min-width: 768px) {
       .category-tiles {

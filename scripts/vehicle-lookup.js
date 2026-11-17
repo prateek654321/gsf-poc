@@ -210,3 +210,77 @@ export async function checkCurrentVehicleFitment(sku, categoryId = '') {
     };
   }
 }
+
+
+/**
+ * Initializes a vehicle registration lookup form inside a container.
+ */
+export async function initVehicleLookup(container, { inputId = 'vehicle-search-vrm-input', classPrefix = 'vehicle-search' } = {}) {
+  const stored = getStoredVehicle();
+
+  container.innerHTML = `
+    <form class="${classPrefix}-form" novalidate>
+      <label class="${classPrefix}-label" for="${inputId}">
+        Enter your Vehicle Registration
+      </label>
+      <div class="${classPrefix}-fieldset">
+        <div class="uk-plate ${classPrefix}-plate-box">
+          <span class="uk-plate-gb">GB</span>
+          <input id="${inputId}" name="vrm" autocomplete="off" spellcheck="false"
+            placeholder="ENTER REG"
+            class="${classPrefix}-input uk-plate-text"
+            value="${stored.vrm || ''}" />
+        </div>
+        <button type="submit" class="${classPrefix}-button button button-accent">
+          FIND PARTS
+        </button>
+      </div>
+      <div class="${classPrefix}-message" aria-live="polite"></div>
+    </form>
+  `;
+
+  const form = container.querySelector(`.${classPrefix}-form`);
+  const input = container.querySelector(`#${inputId}`);
+  const message = container.querySelector(`.${classPrefix}-message`);
+  const button = container.querySelector('button');
+
+  input.addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase();
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const vrm = normalizeVrm(input.value);
+
+    if (!vrm || vrm.length < 2 || vrm.length > 8) {
+      message.textContent = 'Please enter a valid UK registration number.';
+      message.className = `${classPrefix}-message error`;
+      return;
+    }
+
+    message.textContent = 'Checking vehicle & fitment parts...';
+    message.className = `${classPrefix}-message loading`;
+    button.disabled = true;
+
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const categoryId = urlParams.get('category_id') || '';
+
+      const result = await lookupVrmAndFetchSkus(vrm, categoryId);
+
+      message.textContent = `${result.summary || vrm} found!`;
+      message.className = `${classPrefix}-message success`;
+
+      if (window.location.pathname === '/' || window.location.pathname.endsWith('index.html')) {
+        setTimeout(() => {
+          window.location.href = '/plp.html';
+        }, 400);
+      }
+    } catch (error) {
+      message.textContent = error.message || 'Vehicle not found.';
+      message.className = `${classPrefix}-message error`;
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
