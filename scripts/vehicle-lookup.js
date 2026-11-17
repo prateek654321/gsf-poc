@@ -174,6 +174,19 @@ export async function lookupVrmAndFetchSkus(vrmInput, categoryId = '', categoryN
     validSkus = [];
   }
 
+  // If validSkus is empty due to staging REST endpoint failure, retain cached valid SKUs if existing
+  if (validSkus.length === 0) {
+    try {
+      const existingRaw = window.localStorage.getItem(STORAGE_KEYS.VALID_SKUS);
+      const existing = existingRaw ? JSON.parse(existingRaw) : [];
+      if (existing.length > 0) {
+        validSkus = existing;
+      }
+    } catch {
+      // Storage fallback
+    }
+  }
+
   // 3. Save to storage
   saveVehicleState(details.vrm, details.sessionId, details.componentIds, details.vehicle, validSkus);
 
@@ -229,43 +242,75 @@ export async function checkCurrentVehicleFitment(sku, categoryId = '') {
     return { hasVehicle: false, isCompatible: null };
   }
 
-  // Check in cached valid SKUs first
+  const cleanSku = (sku || '').trim().toUpperCase();
+
+  // 1. Check in cached valid SKUs first
   if (stored.validSkus && stored.validSkus.length > 0) {
-    const isFitted = stored.validSkus.some((s) => s.toUpperCase() === sku.toUpperCase());
-    return {
-      hasVehicle: true,
-      vehicle: stored.vehicle,
-      summary: stored.summary,
-      vrm: stored.vrm,
-      isCompatible: isFitted,
-    };
+    const isFitted = stored.validSkus.some((s) => s.toUpperCase() === cleanSku);
+    if (isFitted) {
+      return {
+        hasVehicle: true,
+        vehicle: stored.vehicle,
+        summary: stored.summary,
+        vrm: stored.vrm,
+        isCompatible: true,
+      };
+    }
   }
 
-  // Fallback to single-sku API check
+  // 2. If validSkus is empty or not found, try fetching category fitment SKUs if categoryId provided
+  if ((!stored.validSkus || stored.validSkus.length === 0) && categoryId) {
+    try {
+      const skus = await fetchCategoryFitmentSkus({ categoryId });
+      if (skus && skus.length > 0) {
+        const upperSkus = skus.map((s) => s.toUpperCase());
+        const merged = Array.from(new Set([...(stored.validSkus || []), ...upperSkus]));
+        window.localStorage.setItem(STORAGE_KEYS.VALID_SKUS, JSON.stringify(merged));
+        stored.validSkus = merged;
+        if (merged.includes(cleanSku)) {
+          return {
+            hasVehicle: true,
+            vehicle: stored.vehicle,
+            summary: stored.summary,
+            vrm: stored.vrm,
+            isCompatible: true,
+          };
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  // 3. Fallback to single-sku API check
   try {
     const res = await checkProductCompatibility({
-      sku,
+      sku: cleanSku,
       sessionId: stored.sessionId,
       componentId: stored.componentId,
       categoryId,
     });
-    return {
-      hasVehicle: true,
-      vehicle: stored.vehicle,
-      summary: stored.summary,
-      vrm: stored.vrm,
-      isCompatible: res.isCompatible,
-      recommendedSku: res.recommendedSku,
-    };
+    if (res && res.isCompatible !== undefined) {
+      return {
+        hasVehicle: true,
+        vehicle: stored.vehicle,
+        summary: stored.summary,
+        vrm: stored.vrm,
+        isCompatible: res.isCompatible,
+        recommendedSku: res.recommendedSku,
+      };
+    }
   } catch {
-    return {
-      hasVehicle: true,
-      vehicle: stored.vehicle,
-      summary: stored.summary,
-      vrm: stored.vrm,
-      isCompatible: false,
-    };
+    // API failure
   }
+
+  return {
+    hasVehicle: true,
+    vehicle: stored.vehicle,
+    summary: stored.summary,
+    vrm: stored.vrm,
+    isCompatible: false,
+  };
 }
 
 

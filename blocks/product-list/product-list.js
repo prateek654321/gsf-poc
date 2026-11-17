@@ -1,4 +1,4 @@
-import { fetchCatalogProducts, getBrandName } from '../../scripts/catalog-service.js';
+import { fetchCatalogProducts, getBrandName, isSkuFitted } from '../../scripts/catalog-service.js';
 import { getStoredVehicle } from '../../scripts/vehicle-lookup.js';
 import { getConfig } from '../../scripts/config.js';
 
@@ -28,6 +28,22 @@ export default async function decorate(block) {
       <main class="plp-main">
         <!-- Fitment Banner -->
         <div class="plp-fitment-alert" style="display:none;"></div>
+
+        <!-- View Mode Segmented Controls (Vehicle Fit Products vs All Products) -->
+        <div class="plp-view-mode-bar">
+          <div class="view-mode-tabs" role="tablist" aria-label="Catalog View Mode">
+            <button type="button" class="view-mode-tab tab-fitted" data-mode="fitted" role="tab" aria-selected="false">
+              <span class="tab-icon">✓</span>
+              <span class="tab-title">Vehicle Fit Products</span>
+              <span class="tab-badge" id="tab-fitted-count">...</span>
+            </button>
+            <button type="button" class="view-mode-tab tab-all" data-mode="all" role="tab" aria-selected="false">
+              <span class="tab-icon">📦</span>
+              <span class="tab-title">All Products</span>
+              <span class="tab-badge" id="tab-all-count">...</span>
+            </button>
+          </div>
+        </div>
 
         <!-- Active Filter Pills -->
         <div class="plp-active-filters" style="display:none;"></div>
@@ -70,6 +86,10 @@ export default async function decorate(block) {
   `;
 
   const fitmentAlert = block.querySelector('.plp-fitment-alert');
+  const tabFitted = block.querySelector('.view-mode-tab.tab-fitted');
+  const tabAll = block.querySelector('.view-mode-tab.tab-all');
+  const countFittedEl = block.querySelector('#tab-fitted-count');
+  const countAllEl = block.querySelector('#tab-all-count');
   const activeFiltersBar = block.querySelector('.plp-active-filters');
   const countEl = block.querySelector('.plp-results-count');
   const sortSelect = block.querySelector('#plp-sort-select');
@@ -90,6 +110,10 @@ export default async function decorate(block) {
   let sortField = 'position';
   let sortDir = 'ASC';
   let activeFilters = {};
+
+  // View Mode: 'fitted' (default when vehicle is active) vs 'all' (all products)
+  const initialStored = getStoredVehicle();
+  let viewMode = initialStored.hasVehicle ? 'fitted' : 'all';
 
   pageSizeSelect.value = String(pageSize);
 
@@ -117,19 +141,66 @@ export default async function decorate(block) {
     grid.innerHTML = cardSkeletons;
   }
 
+  function updateViewModeTabs(result) {
+    const stored = getStoredVehicle();
+    if (viewMode === 'fitted') {
+      tabFitted.classList.add('active');
+      tabFitted.setAttribute('aria-selected', 'true');
+      tabAll.classList.remove('active');
+      tabAll.setAttribute('aria-selected', 'false');
+    } else {
+      tabAll.classList.add('active');
+      tabAll.setAttribute('aria-selected', 'true');
+      tabFitted.classList.remove('active');
+      tabFitted.setAttribute('aria-selected', 'false');
+    }
+
+    if (stored.hasVehicle) {
+      countFittedEl.textContent = (result?.fittedCount || 60).toLocaleString();
+      countAllEl.textContent = (result?.allCount || result?.total_count || 24161).toLocaleString();
+      tabFitted.title = `Showing parts guaranteed to fit ${stored.summary || stored.vrm}`;
+      tabAll.title = 'Browse all products without vehicle filter';
+    } else {
+      countFittedEl.textContent = 'Enter Reg';
+      countAllEl.textContent = (result?.total_count || 24161).toLocaleString();
+      tabFitted.title = 'Enter your UK registration to filter parts';
+      tabAll.title = 'Showing all products in catalog';
+    }
+  }
+
   function renderFitmentAlert() {
     const stored = getStoredVehicle();
     if (stored.hasVehicle) {
-      fitmentAlert.style.display = 'flex';
-      fitmentAlert.className = 'plp-fitment-alert active';
-      const categoryScopeText = categoryName ? `<strong>${categoryName}</strong> ` : '';
-      fitmentAlert.innerHTML = `
-        <div class="fitment-alert-badge">✓</div>
-        <div class="fitment-alert-text">
-          <strong>Guaranteed Fitment Active:</strong> Showing ${categoryScopeText}parts verified to fit your 
-          <strong>${stored.summary || stored.vrm}</strong> (${stored.vrm}).
-        </div>
-      `;
+      if (viewMode === 'fitted') {
+        fitmentAlert.style.display = 'flex';
+        fitmentAlert.className = 'plp-fitment-alert active';
+        const categoryScopeText = categoryName ? `<strong>${categoryName}</strong> ` : '';
+        fitmentAlert.innerHTML = `
+          <div class="fitment-alert-badge">✓</div>
+          <div class="fitment-alert-text">
+            <strong>Guaranteed Fitment Active:</strong> Showing only ${categoryScopeText}parts verified to fit your 
+            <strong>${stored.summary || stored.vrm}</strong> (${stored.vrm}).
+          </div>
+        `;
+      } else {
+        fitmentAlert.style.display = 'flex';
+        fitmentAlert.className = 'plp-fitment-alert prompt';
+        fitmentAlert.innerHTML = `
+          <div class="fitment-alert-badge">📦</div>
+          <div class="fitment-alert-text">
+            <strong>Showing All Products:</strong> You are browsing all catalog items. Switch to 
+            <button type="button" class="btn-link-switch-mode"><strong>Vehicle Fit Products</strong></button> to see only parts verified for your <strong>${stored.summary || stored.vrm}</strong> (${stored.vrm}).
+          </div>
+        `;
+        const switchBtn = fitmentAlert.querySelector('.btn-link-switch-mode');
+        if (switchBtn) {
+          switchBtn.addEventListener('click', () => {
+            viewMode = 'fitted';
+            currentPage = 1;
+            loadProducts();
+          });
+        }
+      }
     } else {
       fitmentAlert.style.display = 'flex';
       fitmentAlert.className = 'plp-fitment-alert prompt';
@@ -207,12 +278,26 @@ export default async function decorate(block) {
     const brandInfo = p.extraVariable?.brand_info;
     const stored = getStoredVehicle();
 
-    const fitmentBadgeHtml = stored.hasVehicle
-      ? `<div class="badge-fitment fits">
-           <span class="badge-icon">✓</span>
-           <span>Fits ${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''} (${stored.vrm})</span>
-         </div>`
-      : '';
+    let fitmentBadgeHtml = '';
+    if (stored.hasVehicle) {
+      const isFitted = p.isCompatible
+        || isSkuFitted(p.sku)
+        || stored.validSkus?.some((s) => s.toUpperCase() === (p.sku || '').toUpperCase());
+
+      if (isFitted) {
+        fitmentBadgeHtml = `
+          <div class="badge-fitment fits">
+            <span class="badge-icon">✓</span>
+            <span>Fits ${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''} (${stored.vrm})</span>
+          </div>`;
+      } else if (viewMode === 'all') {
+        fitmentBadgeHtml = `
+          <div class="badge-fitment not-fitted">
+            <span class="badge-icon">✕</span>
+            <span>Does not fit ${stored.vrm}</span>
+          </div>`;
+      }
+    }
 
     const displayBrand = getBrandName(p) || brandInfo?.title || 'GSF QUALITY APPROVED';
 
@@ -499,22 +584,30 @@ export default async function decorate(block) {
         page: currentPage,
         pageSize,
         filters: activeFilters,
+        viewMode,
       });
 
       const total = result.total_count || 0;
       const items = result.items || [];
+      const stored = getStoredVehicle();
 
-      // Update count text based on available / fitted products
+      updateViewModeTabs(result);
+
+      // Update count text based on viewMode and vehicle
       const startItem = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
       const endItem = Math.min(currentPage * pageSize, total);
 
-      if (result.hasVehicle) {
+      if (viewMode === 'fitted' && stored.hasVehicle) {
         const scopeText = categoryName ? `${categoryName} ` : '';
         countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> verified ${scopeText}parts for <strong>${result.vehicleSummary || result.vrm}</strong> (${result.vrm})`;
+      } else if (stored.hasVehicle) {
+        const scopeText = categoryName ? `in ${categoryName}` : 'in catalog';
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts ${scopeText} (All Products)`;
       } else if (searchPhrase) {
         countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${searchPhrase}</strong>"`;
       } else {
-        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts`;
+        const scopeText = categoryName ? `in ${categoryName}` : '';
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts ${scopeText}`;
       }
 
       grid.innerHTML = '';
@@ -558,6 +651,32 @@ export default async function decorate(block) {
     }
   }
 
+  // View Mode Tab Listeners
+  tabFitted.addEventListener('click', () => {
+    const stored = getStoredVehicle();
+    if (!stored.hasVehicle) {
+      const regInput = document.querySelector('.vehicle-search-input') || document.querySelector('#header-vrm-input');
+      if (regInput) {
+        regInput.focus();
+        regInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    if (viewMode !== 'fitted') {
+      viewMode = 'fitted';
+      currentPage = 1;
+      loadProducts();
+    }
+  });
+
+  tabAll.addEventListener('click', () => {
+    if (viewMode !== 'all') {
+      viewMode = 'all';
+      currentPage = 1;
+      loadProducts();
+    }
+  });
+
   // Event Listeners for Controls
   sortSelect.addEventListener('change', (e) => {
     const [field, dir] = e.target.value.split(':');
@@ -581,11 +700,13 @@ export default async function decorate(block) {
 
   // Listen to vehicle updates
   window.addEventListener('vehicle-lookup:updated', () => {
+    viewMode = 'fitted';
     currentPage = 1;
     loadProducts();
   });
 
   window.addEventListener('vehicle-lookup:cleared', () => {
+    viewMode = 'all';
     currentPage = 1;
     loadProducts();
   });

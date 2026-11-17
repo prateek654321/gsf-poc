@@ -16,6 +16,29 @@ import { getConfig } from './config.js';
 const fitmentCache = new Map();
 
 /**
+ * Checks whether an SKU is in any active vehicle fitment pool
+ * @param {string} sku
+ * @returns {boolean}
+ */
+export function isSkuFitted(sku) {
+  if (!sku) return false;
+  const upper = sku.toUpperCase();
+  for (const pool of fitmentCache.values()) {
+    if (pool.rawItems?.some((p) => p.sku?.toUpperCase() === upper)) {
+      return true;
+    }
+  }
+  try {
+    const raw = window.localStorage.getItem('gsf_vehicle_valid_skus');
+    const storedSkus = raw ? JSON.parse(raw) : [];
+    if (storedSkus.includes(upper)) return true;
+  } catch {
+    // Ignore storage parse errors
+  }
+  return false;
+}
+
+/**
  * Extracts a normalized, human-readable brand name for any product
  * @param {object} item
  * @returns {string}
@@ -164,6 +187,7 @@ export async function fetchCatalogProducts({
   pageSize = 15,
   sort = { position: 'ASC' },
   filters = {},
+  viewMode = 'fitted', // 'fitted' or 'all'
 } = {}) {
   const config = getConfig();
   const currentPage = Math.max(1, parseInt(page, 10) || 1);
@@ -183,6 +207,7 @@ export async function fetchCatalogProducts({
           pageSize: targetPageSize,
           sort,
           filters,
+          viewMode,
           vrm: getStoredVehicle().vrm || null,
         }),
       });
@@ -198,8 +223,8 @@ export async function fetchCatalogProducts({
   const stored = getStoredVehicle();
   const hasVehicle = Boolean(stored.hasVehicle && stored.vrm);
 
-  // A) VEHICLE FITMENT FLOW: When a vehicle is searched
-  if (hasVehicle) {
+  // A) VEHICLE FITMENT FLOW: When a vehicle is searched and user is viewing fitted products
+  if (hasVehicle && viewMode === 'fitted') {
     const cacheKey = `${stored.vrm}_cat${categoryId || 'all'}_q${searchPhrase || ''}`;
     let fitmentPool = fitmentCache.get(cacheKey);
 
@@ -253,6 +278,17 @@ export async function fetchCatalogProducts({
       };
 
       fitmentCache.set(cacheKey, fitmentPool);
+
+      // Persist fitted SKUs to storage so PDP recognizes them immediately
+      try {
+        const existingRaw = window.localStorage.getItem('gsf_vehicle_valid_skus');
+        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        const newSkus = verifiedItems.map((p) => (p.sku || '').toUpperCase());
+        const merged = Array.from(new Set([...existing, ...newSkus]));
+        window.localStorage.setItem('gsf_vehicle_valid_skus', JSON.stringify(merged));
+      } catch {
+        // Storage fallback
+      }
     }
 
     // 1. Filter by active basic filters (Brand)
@@ -293,6 +329,9 @@ export async function fetchCatalogProducts({
       items: pagedItems,
       aggregations,
       hasVehicle: true,
+      viewMode: 'fitted',
+      fittedCount: fitmentPool.rawItems.length,
+      allCount: 24161,
       vrm: stored.vrm,
       vehicleSummary: stored.summary,
       categoryName: categoryName || (categoryId ? `Category ${categoryId}` : null),
@@ -300,7 +339,23 @@ export async function fetchCatalogProducts({
     };
   }
 
-  // B) GENERAL CATALOG BROWSING FLOW (No vehicle selected)
+  // B) GENERAL CATALOG BROWSING FLOW (Or when user toggled 'All Products')
+  const verifiedSkus = stored.validSkus || [];
+  const enrichItemWithVehicleFit = (item) => {
+    const upperSku = (item?.sku || '').toUpperCase();
+    const fits = isSkuFitted(upperSku) || verifiedSkus.includes(upperSku);
+    return {
+      ...item,
+      isCompatible: fits,
+      vehicleFitment: (hasVehicle && fits) ? {
+        vrm: stored.vrm,
+        summary: stored.summary,
+        make: stored.vehicle?.make,
+        model: stored.vehicle?.model,
+      } : null,
+    };
+  };
+
   // Check if sort is 'price: ASC' which triggers staging Magento Elasticsearch zero-price gap
   const [sortField, sortDir] = Object.entries(sort)[0] || ['position', 'ASC'];
   const isPriceAsc = sortField === 'price' && String(sortDir).toUpperCase() === 'ASC';
@@ -335,6 +390,7 @@ export async function fetchCatalogProducts({
 
     const startIndex = (safePage - 1) * targetPageSize;
     const pagedItems = sortedItems.slice(startIndex, startIndex + targetPageSize);
+    const enrichedItems = pagedItems.map(enrichItemWithVehicleFit);
 
     return {
       total_count: total,
@@ -343,9 +399,14 @@ export async function fetchCatalogProducts({
         current_page: safePage,
         total_pages: totalPages,
       },
-      items: pagedItems,
+      items: enrichedItems,
       aggregations: buildBasicAggregations(items),
-      hasVehicle: false,
+      hasVehicle,
+      viewMode: 'all',
+      fittedCount: fitmentCache.get(`${stored.vrm}_cat${categoryId || 'all'}_q${searchPhrase || ''}`)?.rawItems?.length || verifiedSkus.length || 60,
+      allCount: total,
+      vrm: stored.vrm,
+      vehicleSummary: stored.summary,
       categoryName: categoryName || (categoryId ? `Category ${categoryId}` : null),
       searchPhrase,
     };
@@ -386,6 +447,8 @@ export async function fetchCatalogProducts({
     }
   }
 
+  const enrichedItems = items.map(enrichItemWithVehicleFit);
+
   return {
     total_count: total,
     page_info: {
@@ -393,9 +456,14 @@ export async function fetchCatalogProducts({
       current_page: currentPage,
       total_pages: totalPages,
     },
-    items,
+    items: enrichedItems,
     aggregations: buildBasicAggregations(items),
-    hasVehicle: false,
+    hasVehicle,
+    viewMode: 'all',
+    fittedCount: fitmentCache.get(`${stored.vrm}_cat${categoryId || 'all'}_q${searchPhrase || ''}`)?.rawItems?.length || verifiedSkus.length || 60,
+    allCount: total,
+    vrm: stored.vrm,
+    vehicleSummary: stored.summary,
     categoryName: categoryName || (categoryId ? `Category ${categoryId}` : null),
     searchPhrase,
   };

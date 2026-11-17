@@ -116,7 +116,8 @@ export default async function decorate(block) {
 
   async function updateFitmentStatus() {
     fitmentBox.innerHTML = '<div class="spinner"></div>';
-    const status = await checkCurrentVehicleFitment(product.sku);
+    const categoryId = product.extraVariable?.breadcrumbs?.[0]?.id || '';
+    const status = await checkCurrentVehicleFitment(product.sku, categoryId);
 
     if (status.hasVehicle) {
       if (status.isCompatible) {
@@ -137,7 +138,7 @@ export default async function decorate(block) {
             <span class="fitment-icon">✕</span>
             <div>
               <strong>Does Not Fit Your Vehicle</strong>
-              <p>This part is not compatible with <strong>${status.summary || status.vrm}</strong>.</p>
+              <p>This part is not compatible with <strong>${status.summary || status.vrm}</strong> (${status.vrm}).</p>
             </div>
           </div>
         `;
@@ -182,7 +183,9 @@ export default async function decorate(block) {
         }
 
         try {
-          await lookupVrmAndFetchSkus(vrm);
+          const catId = product.extraVariable?.breadcrumbs?.[0]?.id || '';
+          const catName = product.extraVariable?.breadcrumbs?.[0]?.label || '';
+          await lookupVrmAndFetchSkus(vrm, catId, catName);
           await updateFitmentStatus();
         } catch (err) {
           inlineError.textContent = err.message || 'Vehicle not found.';
