@@ -1,0 +1,279 @@
+:root {
+  /* GSF Brand Palette */
+  --color-brand-primary: #004b97;
+  --color-brand-primary-hover: #00366f;
+  --color-brand-accent: #ffcc00;
+  --color-brand-accent-hover: #e6b800;
+  --color-brand-dark: #002244;
+  --color-plate-bg: #ffd100;
+  --color-plate-text: #111111;
+  --color-success: #1b8a43;
+  --color-success-bg: #eafaf1;
+  --color-danger: #d9383a;
+  --color-danger-bg: #fde8e8;
+
+  /* Neutrals */
+  --color-white: #ffffff;
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1e293b;
+  --color-gray-900: #0f172a;
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-plate: "UKNumberPlate", "DIN Alternate", "Arial Black", -apple-system, sans-serif;
+
+  /* Spacing */
+  --spacing-xxs: 0.25rem;
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Radius & Shadows */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+  color: var(--color-gray-800);
+  background-color: var(--color-gray-50);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-brand-primary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--color-brand-primary-hover);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Base Container */
+.container,
+main .section {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+@media (min-width: 900px) {
+  .container,
+  main .section {
+    padding: 0 var(--spacing-xl);
+  }
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 0;
+  color: var(--color-gray-900);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+
+@media (min-width: 900px) {
+  h1 { font-size: 2.5rem; }
+  h2 { font-size: 1.875rem; }
+  h3 { font-size: 1.375rem; }
+}
+
+/* Buttons */
+.button,
+button.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.button-primary,
+button.btn-primary {
+  background-color: var(--color-brand-primary);
+  color: var(--color-white);
+}
+
+.button-primary:hover,
+button.btn-primary:hover {
+  background-color: var(--color-brand-primary-hover);
+  color: var(--color-white);
+}
+
+.button-accent,
+button.btn-accent {
+  background-color: var(--color-brand-accent);
+  color: var(--color-gray-900);
+}
+
+.button-accent:hover,
+button.btn-accent:hover {
+  background-color: var(--color-brand-accent-hover);
+}
+
+.button-outline,
+button.btn-outline {
+  background-color: transparent;
+  border-color: var(--color-gray-300);
+  color: var(--color-gray-700);
+}
+
+.button-outline:hover,
+button.btn-outline:hover {
+  border-color: var(--color-brand-primary);
+  color: var(--color-brand-primary);
+}
+
+/* UK Reg Plate Style */
+.uk-plate {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--color-plate-bg);
+  color: var(--color-plate-text);
+  border: 2px solid #000000;
+  border-radius: 6px;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.uk-plate-gb {
+  background-color: #003399;
+  color: #ffffff;
+  padding: 0.25rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  letter-spacing: 0;
+  font-weight: 700;
+  height: 100%;
+}
+
+.uk-plate-text {
+  padding: 0.35rem 0.85rem;
+  font-family: var(--font-plate);
+  font-size: 1.125rem;
+  text-transform: uppercase;
+}
+
+/* Vehicle Active Bar (Top Sticky Component) */
+.active-vehicle-bar {
+  background-color: var(--color-brand-dark);
+  color: var(--color-white);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-brand-accent);
+}
+
+.active-vehicle-bar .vehicle-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.active-vehicle-bar .vehicle-details {
+  font-weight: 500;
+}
+
+.active-vehicle-bar .vehicle-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.active-vehicle-bar button.btn-clear {
+  background: transparent;
+  border: none;
+  color: var(--color-brand-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  padding: 0;
+}
+
+/* Fitment Badges */
+.badge-fitment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.badge-fitment.fits {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid rgba(27, 138, 67, 0.2);
+}
+
+.badge-fitment.not-fits {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid rgba(217, 56, 58, 0.2);
+}
+
+/* Spinner */
+.spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid rgba(0, 75, 151, 0.2);
+  border-top-color: var(--color-brand-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

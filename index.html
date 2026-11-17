@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GSF Car Parts — Vehicle Registration Search & Catalog</title>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script src="/scripts/aem.js" type="module"></script>
+  <script src="/scripts/scripts.js" type="module"></script>
+</head>
+<body>
+  <header class="header"></header>
+
+  <main>
+    <!-- Section 1: Hero & VRM Search Block -->
+    <div class="section hero-section">
+      <div class="vrm-search block"></div>
+    </div>
+
+    <!-- Section 2: Popular Categories -->
+    <div class="section categories-section">
+      <h2>Browse by Category</h2>
+      <div class="category-tiles">
+        <a href="/plp.html?category_id=5278" class="category-tile">
+          <span class="cat-icon">🔧</span>
+          <span class="cat-title">Service Parts</span>
+        </a>
+        <a href="/plp.html?category_id=5461" class="category-tile">
+          <span class="cat-icon">🛑</span>
+          <span class="cat-title">Braking & Discs</span>
+        </a>
+        <a href="/plp.html?category_id=5590" class="category-tile">
+          <span class="cat-icon">🚗</span>
+          <span class="cat-title">Steering & Suspension</span>
+        </a>
+        <a href="/plp.html?category_id=5707" class="category-tile">
+          <span class="cat-icon">⚙️</span>
+          <span class="cat-title">Engine Parts</span>
+        </a>
+        <a href="/plp.html?category_id=5890" class="category-tile">
+          <span class="cat-icon">🔩</span>
+          <span class="cat-title">Transmission</span>
+        </a>
+        <a href="/plp.html?category_id=5986" class="category-tile">
+          <span class="cat-icon">⚡</span>
+          <span class="cat-title">Electrical & Batteries</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Section 3: Featured Products Listing -->
+    <div class="section products-section">
+      <h2>Popular Replacement Parts</h2>
+      <div class="product-list block"></div>
+    </div>
+  </main>
+
+  <footer class="footer"></footer>
+
+  <style>
+    .category-tiles {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin: 1.5rem 0 3rem;
+    }
+    @media (min-width: 768px) {
+      .category-tiles {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    @media (min-width: 1024px) {
+      .category-tiles {
+        grid-template-columns: repeat(6, 1fr);
+      }
+    }
+    .category-tile {
+      background: var(--color-white);
+      border-radius: var(--radius-md);
+      padding: 1.5rem 1rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--color-gray-200);
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    .category-tile:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--color-brand-primary);
+    }
+    .cat-icon {
+      font-size: 2rem;
+    }
+    .cat-title {
+      font-weight: 700;
+      font-size: 0.9375rem;
+      color: var(--color-gray-800);
+    }
+  </style>
+</body>
+</html>
