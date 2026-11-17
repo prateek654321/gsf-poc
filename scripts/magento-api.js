@@ -1,13 +1,22 @@
+import { getConfig } from './config.js';
+
 /**
  * Magento GraphQL and REST API Client for GSF Car Parts
+ * Configured dynamically via EDS metadata and config.json
  */
-
-export const MAGENTO_CONFIG = {
-  graphqlEndpoint: 'https://gsf-carparts-staging.agilecollab.com/graphql',
-  restEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1',
-  vrmDetailsEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vrmdetails',
-  specialCoupon: 'GSF22',
-};
+export const MAGENTO_CONFIG = new Proxy({}, {
+  get(target, prop) {
+    const cfg = getConfig();
+    if (prop === 'graphqlEndpoint') return cfg.magentoGraphqlEndpoint;
+    if (prop === 'vrmDetailsEndpoint') return cfg.vrmDetailsEndpoint;
+    if (prop === 'fitmentSkusEndpoint') return cfg.fitmentSkusEndpoint;
+    if (prop === 'vehicleCompatibilityEndpoint') return cfg.vehicleCompatibilityEndpoint;
+    if (prop === 'restEndpoint') return cfg.vrmDetailsEndpoint.replace(/\/gsf-vrm\/vrmdetails$/, '');
+    if (prop === 'specialCoupon') return cfg.specialCoupon;
+    if (prop === 'storeCode') return cfg.storeCode;
+    return cfg[prop];
+  },
+});
 
 /**
  * Execute GraphQL request against Magento
@@ -218,7 +227,7 @@ export async function fetchProducts({
   const productfilters = {};
 
   if (categoryId) {
-    productfilters.category_id = { in: [Number(categoryId)] };
+    productfilters.category_id = { eq: String(categoryId) };
   }
 
   if (skus && Array.isArray(skus) && skus.length > 0) {
@@ -358,7 +367,7 @@ export async function fetchFitmentSkus({ sessionId, componentIds, vrm = '', cate
     mandatoryComponentIds: '',
   });
 
-  const url = `${MAGENTO_CONFIG.restEndpoint}/gsf-vrm/skus?${params.toString()}`;
+  const url = `${MAGENTO_CONFIG.fitmentSkusEndpoint}?${params.toString()}`;
   const response = await fetch(url, {
     method: 'GET',
     headers: { Accept: 'application/json' },
@@ -393,7 +402,7 @@ export async function checkProductCompatibility({ sku, sessionId, componentId, c
     specialCoupon: MAGENTO_CONFIG.specialCoupon,
   });
 
-  const url = `${MAGENTO_CONFIG.restEndpoint}/gsf-vrm/vehiclecompatibility?${params.toString()}`;
+  const url = `${MAGENTO_CONFIG.vehicleCompatibilityEndpoint}?${params.toString()}`;
   const response = await fetch(url, {
     method: 'GET',
     headers: { Accept: 'application/json' },

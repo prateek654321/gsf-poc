@@ -1,0 +1,11 @@
+{
+  "magentoGraphqlEndpoint": "https://gsf-carparts-staging.agilecollab.com/graphql",
+  "vrmDetailsEndpoint": "https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vrmdetails",
+  "fitmentSkusEndpoint": "https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/skus",
+  "vehicleCompatibilityEndpoint": "https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vehiclecompatibility",
+  "placeholderImage": "https://gsf-carparts-staging.agilecollab.com/media/catalog/product/placeholder/default/product_placeholder_2.png",
+  "specialCoupon": "GSF22",
+  "storeCode": "default",
+  "pageSizeDefault": 15,
+  "pageSizeOptions": [15, 30, 60]
+}

@@ -1,5 +1,6 @@
 import { fetchProducts } from '../../scripts/magento-api.js';
-import { getStoredVehicle } from '../../scripts/vehicle-lookup.js';
+import { getStoredVehicle, fetchCategoryFitmentSkus } from '../../scripts/vehicle-lookup.js';
+import { getConfig } from '../../scripts/config.js';
 
 export default async function decorate(block) {
   block.innerHTML = `
@@ -78,11 +79,13 @@ export default async function decorate(block) {
   const facetsContainer = block.querySelector('.plp-facets-container');
   const clearFiltersBtn = block.querySelector('.btn-clear-filters');
 
-  // URL state management
+  // Dynamic Configuration & URL state management
+  const appConfig = getConfig();
   const urlParams = new URLSearchParams(window.location.search);
   const categoryId = urlParams.get('category_id') || '';
+  const categoryName = urlParams.get('category_name') || '';
   let currentPage = parseInt(urlParams.get('page'), 10) || 1;
-  let pageSize = parseInt(urlParams.get('pagesize'), 10) || 15;
+  let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
   let sortField = 'position';
   let sortDir = 'ASC';
   let activeFilters = {};
@@ -118,10 +121,11 @@ export default async function decorate(block) {
     if (stored.hasVehicle) {
       fitmentAlert.style.display = 'flex';
       fitmentAlert.className = 'plp-fitment-alert active';
+      const categoryScopeText = categoryName ? `<strong>${categoryName}</strong> ` : '';
       fitmentAlert.innerHTML = `
         <div class="fitment-alert-badge">✓</div>
         <div class="fitment-alert-text">
-          <strong>Guaranteed Fitment Active:</strong> Showing parts verified to fit your 
+          <strong>Guaranteed Fitment Active:</strong> Showing ${categoryScopeText}parts verified to fit your 
           <strong>${stored.summary || stored.vrm}</strong> (${stored.vrm}).
         </div>
       `;
@@ -198,7 +202,7 @@ export default async function decorate(block) {
     const priceVal = minPrice ? Number(minPrice.value) : 0;
     const priceText = priceVal > 0 ? `£${priceVal.toFixed(2)}` : 'POA';
     const exVatText = priceVal > 0 ? `£${(priceVal / 1.2).toFixed(2)} ex. VAT` : '';
-    const imgUrl = p.thumbnail?.url || 'https://gsf-carparts-staging.agilecollab.com/media/catalog/product/placeholder/default/product_placeholder_2.png';
+    const imgUrl = p.thumbnail?.url || appConfig.placeholderImage;
     const brandInfo = p.extraVariable?.brand_info;
     const stored = getStoredVehicle();
 
@@ -472,9 +476,21 @@ export default async function decorate(block) {
     renderFitmentAlert();
 
     const stored = getStoredVehicle();
-    const fitmentSkus = stored.hasVehicle && stored.validSkus && stored.validSkus.length > 0
-      ? stored.validSkus
-      : null;
+    let fitmentSkus = null;
+
+    if (stored.hasVehicle) {
+      if (categoryId || categoryName) {
+        // Fetch fitment SKUs specifically scoped to the active category based on component IDs
+        const categorySkus = await fetchCategoryFitmentSkus({ categoryId, categoryName });
+        if (categorySkus && categorySkus.length > 0) {
+          fitmentSkus = categorySkus;
+        } else if (stored.validSkus && stored.validSkus.length > 0) {
+          fitmentSkus = stored.validSkus;
+        }
+      } else if (stored.validSkus && stored.validSkus.length > 0) {
+        fitmentSkus = stored.validSkus;
+      }
+    }
 
     try {
       const result = await fetchProducts({

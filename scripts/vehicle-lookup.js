@@ -3,6 +3,7 @@ import {
   fetchFitmentSkus,
   checkProductCompatibility,
 } from './magento-api.js';
+import { resolveCategoryComponentIds } from './category-component-map.js';
 
 export const STORAGE_KEYS = {
   VRM: 'gsf_vehicle_vrm',
@@ -134,8 +135,9 @@ export function clearVehicleState() {
 
 /**
  * Execute full VRM lookup + Fitment SKUs retrieval
+ * Dynamically maps category to component IDs if categoryId or categoryName is provided
  */
-export async function lookupVrmAndFetchSkus(vrmInput, categoryId = '') {
+export async function lookupVrmAndFetchSkus(vrmInput, categoryId = '', categoryName = '') {
   const vrm = normalizeVrm(vrmInput);
   if (!vrm || vrm.length < 2 || vrm.length > 8) {
     throw new Error('Please enter a valid UK registration number.');
@@ -144,13 +146,25 @@ export async function lookupVrmAndFetchSkus(vrmInput, categoryId = '') {
   // 1. Fetch VRM Details
   const details = await fetchVrmDetails(vrm);
 
-  // 2. Fetch Fitment SKUs
+  // 2. Resolve mapped component IDs for the category
   let validSkus = [];
   try {
     if (details.sessionId && details.componentIds.length > 0) {
+      let targetComponentIds = details.componentIds;
+      if (categoryId || categoryName) {
+        const mapped = resolveCategoryComponentIds({
+          categoryId,
+          categoryName,
+          vehicleComponents: details.components || [],
+        });
+        if (mapped.length > 0) {
+          targetComponentIds = mapped;
+        }
+      }
+
       validSkus = await fetchFitmentSkus({
         sessionId: details.sessionId,
-        componentIds: details.componentIds,
+        componentIds: targetComponentIds,
         vrm: details.vrm,
         categoryId,
       });
@@ -172,6 +186,38 @@ export async function lookupVrmAndFetchSkus(vrmInput, categoryId = '') {
   // 4. Notify app
   window.dispatchEvent(new CustomEvent('vehicle-lookup:updated', { detail: result }));
   return result;
+}
+
+/**
+ * Fetches fitment SKUs specifically scoped to the active category based on component IDs
+ */
+export async function fetchCategoryFitmentSkus({ categoryId = '', categoryName = '' } = {}) {
+  const stored = getStoredVehicle();
+  if (!stored.hasVehicle || !stored.sessionId) return [];
+
+  const vehicleComps = stored.vehicle?.components || [];
+  const mappedComponentIds = resolveCategoryComponentIds({
+    categoryId,
+    categoryName,
+    vehicleComponents: vehicleComps,
+  });
+
+  const componentIdsToUse = mappedComponentIds.length > 0
+    ? mappedComponentIds
+    : stored.componentIds;
+
+  try {
+    const skus = await fetchFitmentSkus({
+      sessionId: stored.sessionId,
+      componentIds: componentIdsToUse,
+      vrm: stored.vrm,
+      categoryId,
+    });
+    return skus || [];
+  } catch (err) {
+    console.warn(`Could not fetch fitment SKUs for category ${categoryId}:`, err);
+    return [];
+  }
 }
 
 /**

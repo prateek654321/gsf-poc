@@ -1,62 +1,8 @@
 import { fetchCategories } from '../../scripts/magento-api.js';
 import { getStoredVehicle, clearVehicleState } from '../../scripts/vehicle-lookup.js';
 
-function renderActiveVehicleBanner(container) {
-  const stored = getStoredVehicle();
-  container.innerHTML = '';
-
-  if (!stored.hasVehicle) {
-    container.style.display = 'none';
-    return;
-  }
-
-  container.style.display = 'flex';
-  container.className = 'active-vehicle-bar';
-
-  const info = document.createElement('div');
-  info.className = 'vehicle-info';
-
-  const plate = document.createElement('div');
-  plate.className = 'uk-plate';
-  plate.innerHTML = `
-    <span class="uk-plate-gb">GB</span>
-    <span class="uk-plate-text">${stored.vrm}</span>
-  `;
-
-  const details = document.createElement('div');
-  details.className = 'vehicle-details';
-  details.textContent = stored.summary || `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`;
-
-  info.append(plate, details);
-
-  const actions = document.createElement('div');
-  actions.className = 'vehicle-actions';
-
-  const changeBtn = document.createElement('button');
-  changeBtn.className = 'btn-clear';
-  changeBtn.textContent = 'Change / Clear Vehicle';
-  changeBtn.addEventListener('click', () => {
-    clearVehicleState();
-  });
-
-  actions.append(changeBtn);
-  container.append(info, actions);
-}
-
 export default async function decorate(block) {
   block.innerHTML = '';
-
-  // 1. Sticky Vehicle Banner
-  const vehicleBanner = document.createElement('div');
-  vehicleBanner.className = 'header-vehicle-banner';
-  renderActiveVehicleBanner(vehicleBanner);
-
-  window.addEventListener('vehicle-lookup:updated', () => {
-    renderActiveVehicleBanner(vehicleBanner);
-  });
-  window.addEventListener('vehicle-lookup:cleared', () => {
-    renderActiveVehicleBanner(vehicleBanner);
-  });
 
   // 2. Main Brand Row
   const brandBar = document.createElement('div');

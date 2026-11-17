@@ -1,4 +1,5 @@
 import { fetchProductBySku } from '../../scripts/magento-api.js';
+import { getConfig } from '../../scripts/config.js';
 import {
   getStoredVehicle,
   checkCurrentVehicleFitment,
@@ -44,9 +45,10 @@ export default async function decorate(block) {
     return;
   }
 
+  const config = getConfig();
   const minPrice = product.price_range?.minimum_price?.final_price;
   const priceFormatted = minPrice ? `£${Number(minPrice.value).toFixed(2)}` : '';
-  const imgUrl = product.thumbnail?.url || 'https://gsf-carparts-staging.agilecollab.com/media/catalog/product/placeholder/default/product_placeholder_2.png';
+  const imgUrl = product.thumbnail?.url || config.placeholderImage;
   const brand = product.extraVariable?.brand_info;
 
   block.innerHTML = `

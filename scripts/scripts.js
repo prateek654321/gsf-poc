@@ -7,6 +7,7 @@ import {
   loadSection,
   loadCSS,
 } from './aem.js';
+import { loadConfig } from './config.js';
 
 /**
  * Decorates the main element.
@@ -23,6 +24,7 @@ export function decorateMain(main) {
  */
 async function loadEager(doc) {
   document.documentElement.lang = 'en';
+  await loadConfig();
   const main = doc.querySelector('main');
   if (main) {
     decorateMain(main);
