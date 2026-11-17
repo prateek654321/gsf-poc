@@ -17,10 +17,13 @@ export default async function decorate(block) {
     </div>
   `;
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentQ = urlParams.get('q') || urlParams.get('search') || '';
+
   const searchForm = document.createElement('form');
   searchForm.className = 'header-search-form';
   searchForm.innerHTML = `
-    <input type="search" placeholder="Search by part name, brand or SKU..." class="header-search-input" />
+    <input type="search" placeholder="Search by part name, brand or SKU..." class="header-search-input" value="${currentQ.replace(/"/g, '&quot;')}" />
     <button type="submit" class="header-search-btn">
       <span>Search</span>
     </button>

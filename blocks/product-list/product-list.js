@@ -1,5 +1,5 @@
-import { fetchProducts } from '../../scripts/magento-api.js';
-import { getStoredVehicle, fetchCategoryFitmentSkus } from '../../scripts/vehicle-lookup.js';
+import { fetchCatalogProducts } from '../../scripts/catalog-service.js';
+import { getStoredVehicle } from '../../scripts/vehicle-lookup.js';
 import { getConfig } from '../../scripts/config.js';
 
 export default async function decorate(block) {
@@ -84,6 +84,7 @@ export default async function decorate(block) {
   const urlParams = new URLSearchParams(window.location.search);
   const categoryId = urlParams.get('category_id') || '';
   const categoryName = urlParams.get('category_name') || '';
+  const searchPhrase = urlParams.get('q') || urlParams.get('search') || '';
   let currentPage = parseInt(urlParams.get('page'), 10) || 1;
   let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
   let sortField = 'position';
@@ -97,7 +98,7 @@ export default async function decorate(block) {
   }
 
   function renderSkeletons(count = pageSize) {
-    const cardSkeletons = Array.from({ length: Math.min(count, 9) }).map(() => `
+    const cardSkeletons = Array.from({ length: Math.min(count, 15) }).map(() => `
       <div class="skeleton-product-card">
         <div class="skeleton-shimmer skeleton-media"></div>
         <div class="skeleton-info">
@@ -475,40 +476,32 @@ export default async function decorate(block) {
     renderSkeletons(pageSize);
     renderFitmentAlert();
 
-    const stored = getStoredVehicle();
-    let fitmentSkus = null;
-
-    if (stored.hasVehicle) {
-      if (categoryId || categoryName) {
-        // Fetch fitment SKUs specifically scoped to the active category based on component IDs
-        const categorySkus = await fetchCategoryFitmentSkus({ categoryId, categoryName });
-        if (categorySkus && categorySkus.length > 0) {
-          fitmentSkus = categorySkus;
-        } else if (stored.validSkus && stored.validSkus.length > 0) {
-          fitmentSkus = stored.validSkus;
-        }
-      } else if (stored.validSkus && stored.validSkus.length > 0) {
-        fitmentSkus = stored.validSkus;
-      }
-    }
-
     try {
-      const result = await fetchProducts({
+      const result = await fetchCatalogProducts({
         categoryId: categoryId || null,
-        skus: fitmentSkus,
+        categoryName: categoryName || null,
+        searchPhrase: searchPhrase || null,
         sort: getSortObject(),
         page: currentPage,
         pageSize,
-        customFilters: activeFilters,
+        filters: activeFilters,
       });
 
       const total = result.total_count || 0;
       const items = result.items || [];
 
-      // Update count text
+      // Update count text based on available / fitted products
       const startItem = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
       const endItem = Math.min(currentPage * pageSize, total);
-      countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts`;
+
+      if (result.hasVehicle) {
+        const scopeText = categoryName ? `${categoryName} ` : '';
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> verified ${scopeText}parts for <strong>${result.vehicleSummary || result.vrm}</strong> (${result.vrm})`;
+      } else if (searchPhrase) {
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${searchPhrase}</strong>"`;
+      } else {
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts`;
+      }
 
       grid.innerHTML = '';
       if (items.length === 0) {
