@@ -149,7 +149,9 @@ const PRODUCTS_FRAGMENT = `
       }
     }
   }
+`;
 
+const AGGREGATION_FRAGMENT = `
   fragment AggregationFragment on Aggregation {
     label
     count
@@ -195,6 +197,7 @@ const PRODUCT_FILTER_QUERY = `
     }
   }
   ${PRODUCTS_FRAGMENT}
+  ${AGGREGATION_FRAGMENT}
 `;
 
 /**
@@ -235,6 +238,11 @@ export async function fetchProducts({
       productfilters[code] = { eq: String(value) };
     }
   });
+
+  // Magento requires at least one filter criterion in 'filter'
+  if (Object.keys(productfilters).length === 0) {
+    productfilters.price = { from: 0.01 };
+  }
 
   const variables = {
     currentPage: Number(page) || 1,

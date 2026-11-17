@@ -13,111 +13,25 @@
 
   <main>
     <!-- Section 1: Hero & Vehicle Search Block -->
-    <div class="section hero-section">
+    <div>
       <div class="vehicle-search block"></div>
     </div>
 
     <!-- Section 2: Popular Categories -->
-    <div class="section categories-section">
-      <div class="section-title-bar">
-        <h2>Browse by Category</h2>
-        <a href="/categories.html" class="view-all-link">View All Categories →</a>
-      </div>
-      <div class="category-tiles">
-        <a href="/plp.html?category_id=5278" class="category-tile">
-          <span class="cat-icon">🔧</span>
-          <span class="cat-title">Service Parts</span>
-        </a>
-        <a href="/plp.html?category_id=5461" class="category-tile">
-          <span class="cat-icon">🛑</span>
-          <span class="cat-title">Braking & Discs</span>
-        </a>
-        <a href="/plp.html?category_id=5590" class="category-tile">
-          <span class="cat-icon">🚗</span>
-          <span class="cat-title">Steering & Suspension</span>
-        </a>
-        <a href="/plp.html?category_id=5707" class="category-tile">
-          <span class="cat-icon">⚙️</span>
-          <span class="cat-title">Engine Parts</span>
-        </a>
-        <a href="/plp.html?category_id=5890" class="category-tile">
-          <span class="cat-icon">🔩</span>
-          <span class="cat-title">Transmission</span>
-        </a>
-        <a href="/plp.html?category_id=5986" class="category-tile">
-          <span class="cat-icon">⚡</span>
-          <span class="cat-title">Electrical & Batteries</span>
-        </a>
-      </div>
+    <div>
+      <h2>Browse by Category</h2>
+      <p><a href="/categories.html" class="button button-outline">View All Categories →</a></p>
+      <div class="category-tiles block"></div>
     </div>
 
     <!-- Section 3: Popular Replacement Parts -->
-    <div class="section products-section">
-      <div class="section-title-bar">
-        <h2>Popular Replacement Parts</h2>
-        <a href="/plp.html" class="view-all-link">Browse All Catalog Parts →</a>
-      </div>
+    <div>
+      <h2>Popular Replacement Parts</h2>
+      <p><a href="/plp.html" class="button button-outline">Browse All Catalog Parts →</a></p>
       <div class="product-list block"></div>
     </div>
   </main>
 
   <footer class="footer"></footer>
-
-  <style>
-    .section-title-bar {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      margin-top: 1.5rem;
-    }
-    .view-all-link {
-      font-weight: 700;
-      font-size: 0.9375rem;
-      color: var(--color-brand-primary);
-    }
-    .category-tiles {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-      margin: 1rem 0 2.5rem;
-    }
-    @media (min-width: 768px) {
-      .category-tiles {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-    @media (min-width: 1024px) {
-      .category-tiles {
-        grid-template-columns: repeat(6, 1fr);
-      }
-    }
-    .category-tile {
-      background: var(--color-white);
-      border-radius: var(--radius-md);
-      padding: 1.5rem 1rem;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
-      box-shadow: var(--shadow-sm);
-      border: 1px solid var(--color-gray-200);
-      transition: all 0.2s ease;
-      text-decoration: none;
-    }
-    .category-tile:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--color-brand-primary);
-    }
-    .cat-icon {
-      font-size: 2rem;
-    }
-    .cat-title {
-      font-weight: 700;
-      font-size: 0.9375rem;
-      color: var(--color-gray-800);
-    }
-  </style>
 </body>
 </html>

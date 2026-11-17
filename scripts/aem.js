@@ -565,14 +565,17 @@ async function loadBlock(block) {
  * @param {Element} block The block element
  */
 function decorateBlock(block) {
-  const shortBlockName = block.classList[0];
+  if (block.dataset.blockStatus) return;
+  const shortBlockName = [...block.classList].find((c) => c !== 'block' && !c.endsWith('-wrapper') && !c.endsWith('-container'));
   if (shortBlockName) {
     block.classList.add('block');
     block.dataset.blockName = shortBlockName;
     block.dataset.blockStatus = 'initialized';
     wrapTextNodes(block);
     const blockWrapper = block.parentElement;
-    blockWrapper.classList.add(`${shortBlockName}-wrapper`);
+    if (blockWrapper && blockWrapper !== block.closest('.section')) {
+      blockWrapper.classList.add(`${shortBlockName}-wrapper`);
+    }
     const section = block.closest('.section');
     if (section) section.classList.add(`${shortBlockName}-container`);
   }
@@ -583,7 +586,7 @@ function decorateBlock(block) {
  * @param {Element} main The container element
  */
 function decorateBlocks(main) {
-  main.querySelectorAll('div.section > div > div').forEach(decorateBlock);
+  main.querySelectorAll('div.section > div > div, div.section > div[class], div.block').forEach(decorateBlock);
 }
 
 /**

@@ -1,6 +1,7 @@
 import {
   loadHeader,
   loadFooter,
+  decorateSections,
   decorateBlocks,
   loadSections,
   loadSection,
@@ -12,6 +13,7 @@ import {
  * @param {Element} main The main element
  */
 export function decorateMain(main) {
+  decorateSections(main);
   decorateBlocks(main);
 }
 
