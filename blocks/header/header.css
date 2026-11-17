@@ -5,12 +5,6 @@
   z-index: 100;
 }
 
-/* Sticky Vehicle Banner */
-.header-vehicle-banner .active-vehicle-bar {
-  padding: 0.5rem 1.5rem;
-  background-color: var(--color-brand-dark);
-}
-
 /* Brand Bar */
 .header .header-brand-bar {
   max-width: 1280px;

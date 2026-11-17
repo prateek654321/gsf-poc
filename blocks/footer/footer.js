@@ -1,6 +1,6 @@
 export default async function decorate(block) {
   block.innerHTML = `
-    <div class="footer-wrapper">
+    <div class="footer-inner-container">
       <div class="footer-columns">
         <div class="footer-col">
           <div class="footer-brand">
@@ -14,10 +14,10 @@ export default async function decorate(block) {
         <div class="footer-col">
           <h4>Popular Categories</h4>
           <ul>
-            <li><a href="/plp.html?category_id=5278">Service Parts</a></li>
-            <li><a href="/plp.html?category_id=5461">Braking & Discs</a></li>
-            <li><a href="/plp.html?category_id=5590">Suspension & Steering</a></li>
-            <li><a href="/plp.html?category_id=5707">Engine Parts</a></li>
+            <li><a href="/plp.html?category_id=5278&category_name=Service%20Parts">Service Parts</a></li>
+            <li><a href="/plp.html?category_id=5461&category_name=Braking">Braking & Discs</a></li>
+            <li><a href="/plp.html?category_id=5590&category_name=Steering%20%26%20Suspension">Suspension & Steering</a></li>
+            <li><a href="/plp.html?category_id=5707&category_name=Engine%20Parts">Engine Parts</a></li>
           </ul>
         </div>
         <div class="footer-col">

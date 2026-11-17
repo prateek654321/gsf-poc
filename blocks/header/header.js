@@ -1,10 +1,9 @@
 import { fetchCategories } from '../../scripts/magento-api.js';
-import { getStoredVehicle, clearVehicleState } from '../../scripts/vehicle-lookup.js';
 
 export default async function decorate(block) {
   block.innerHTML = '';
 
-  // 2. Main Brand Row
+  // 1. Main Brand Row
   const brandBar = document.createElement('div');
   brandBar.className = 'header-brand-bar';
 
@@ -53,7 +52,7 @@ export default async function decorate(block) {
 
   brandBar.append(logo, searchForm, actions);
 
-  // 3. Navigation Bar (Strictly no horizontal scroll, fixed clean layout)
+  // 2. Navigation Bar (Strictly no horizontal scroll, fixed clean layout)
   const navBar = document.createElement('nav');
   navBar.className = 'header-nav-bar';
 
@@ -66,7 +65,7 @@ export default async function decorate(block) {
   navContainer.append(navList);
   navBar.append(navContainer);
 
-  block.append(vehicleBanner, brandBar, navBar);
+  block.append(brandBar, navBar);
 
   // Fetch Categories and render limited primary items + "All Categories" link
   try {
