@@ -8,8 +8,8 @@ import {
 export default async function decorate(block) {
   block.innerHTML = `
     <div class="pdp-loading">
-      <div class="spinner"></div>
-      <p>Loading product details...</p>
+      <div class="pulsing-spinner"></div>
+      <p class="loader-text">Loading product details...</p>
     </div>
   `;
 

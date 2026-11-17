@@ -1,18 +1,30 @@
 :root {
-  /* GSF Brand Palette */
+  /* GSF Car Parts Brand Palette */
   --color-brand-primary: #004b97;
-  --color-brand-primary-hover: #00366f;
-  --color-brand-accent: #ffcc00;
-  --color-brand-accent-hover: #e6b800;
-  --color-brand-dark: #002244;
-  --color-plate-bg: #ffd100;
-  --color-plate-text: #111111;
-  --color-success: #1b8a43;
-  --color-success-bg: #eafaf1;
-  --color-danger: #d9383a;
-  --color-danger-bg: #fde8e8;
+  --color-brand-primary-dark: #003366;
+  --color-brand-primary-light: #0066cc;
+  --color-brand-accent: #ffd100;
+  --color-brand-accent-hover: #e6bc00;
+  --color-brand-dark: #07162c;
+  --color-brand-surface: #0e2a4a;
 
-  /* Neutrals */
+  /* UK Registration Plate Colors */
+  --color-plate-yellow: #ffd100;
+  --color-plate-dark: #111111;
+  --color-plate-blue: #003399;
+
+  /* Semantic Status Colors */
+  --color-success: #059669;
+  --color-success-bg: #ecfdf5;
+  --color-success-border: #a7f3d0;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-info: #0284c7;
+  --color-info-bg: #f0f9ff;
+  --color-info-border: #bae6fd;
+
+  /* Neutral Slate Scale */
   --color-white: #ffffff;
   --color-gray-50: #f8fafc;
   --color-gray-100: #f1f5f9;
@@ -27,25 +39,28 @@
 
   /* Typography */
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-plate: "UKNumberPlate", "DIN Alternate", "Arial Black", -apple-system, sans-serif;
+  --font-plate: "Charles Wright", "DIN Alternate", "Arial Black", Impact, -apple-system, sans-serif;
 
-  /* Spacing */
-  --spacing-xxs: 0.25rem;
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 0.75rem;
+  /* Layout & Spacing */
+  --container-max-width: 1320px;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
 
-  /* Radius & Shadows */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* Border Radii & Elevation */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
   --radius-full: 9999px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-card-hover: 0 12px 20px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
+  --shadow-plate: 0 4px 10px rgba(0, 0, 0, 0.25), inset 0 -2px 0 rgba(0, 0, 0, 0.3);
 }
 
 *, *::before, *::after {
@@ -57,7 +72,7 @@ body {
   padding: 0;
   font-family: var(--font-family);
   color: var(--color-gray-800);
-  background-color: var(--color-gray-50);
+  background-color: #f4f6f9;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -69,7 +84,7 @@ a {
 }
 
 a:hover {
-  color: var(--color-brand-primary-hover);
+  color: var(--color-brand-primary-light);
 }
 
 img {
@@ -78,39 +93,34 @@ img {
   display: block;
 }
 
-/* Base Container */
+/* Container */
 .container,
-main .section {
+main > div.section {
   width: 100%;
-  max-width: 1280px;
+  max-width: var(--container-max-width);
   margin: 0 auto;
-  padding: 0 var(--spacing-md);
+  padding: 0 1.25rem;
 }
 
 @media (min-width: 900px) {
   .container,
-  main .section {
-    padding: 0 var(--spacing-xl);
+  main > div.section {
+    padding: 0 2rem;
   }
 }
 
-/* Headings */
+/* Typography */
 h1, h2, h3, h4, h5, h6 {
   margin-top: 0;
   color: var(--color-gray-900);
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
-h1 { font-size: 2rem; }
-h2 { font-size: 1.5rem; }
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.75rem; }
 h3 { font-size: 1.25rem; }
-
-@media (min-width: 900px) {
-  h1 { font-size: 2.5rem; }
-  h2 { font-size: 1.875rem; }
-  h3 { font-size: 1.375rem; }
-}
 
 /* Buttons */
 .button,
@@ -118,44 +128,49 @@ button.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-xs);
-  padding: 0.625rem 1.25rem;
+  gap: 0.5rem;
+  padding: 0.6875rem 1.375rem;
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
+  user-select: none;
 }
 
 .button-primary,
 button.btn-primary {
   background-color: var(--color-brand-primary);
   color: var(--color-white);
+  box-shadow: 0 2px 4px rgba(0, 75, 151, 0.2);
 }
 
 .button-primary:hover,
 button.btn-primary:hover {
-  background-color: var(--color-brand-primary-hover);
-  color: var(--color-white);
+  background-color: var(--color-brand-primary-dark);
+  box-shadow: 0 4px 8px rgba(0, 75, 151, 0.3);
+  transform: translateY(-1px);
 }
 
 .button-accent,
 button.btn-accent {
   background-color: var(--color-brand-accent);
   color: var(--color-gray-900);
+  box-shadow: 0 2px 6px rgba(255, 209, 0, 0.35);
 }
 
 .button-accent:hover,
 button.btn-accent:hover {
   background-color: var(--color-brand-accent-hover);
+  transform: translateY(-1px);
 }
 
 .button-outline,
 button.btn-outline {
-  background-color: transparent;
-  border-color: var(--color-gray-300);
+  background-color: var(--color-white);
+  border: 1.5px solid var(--color-gray-300);
   color: var(--color-gray-700);
 }
 
@@ -163,117 +178,162 @@ button.btn-outline {
 button.btn-outline:hover {
   border-color: var(--color-brand-primary);
   color: var(--color-brand-primary);
+  background-color: var(--color-gray-50);
 }
 
-/* UK Reg Plate Style */
+/* UK Registration Plate Style */
 .uk-plate {
   display: inline-flex;
   align-items: center;
-  background-color: var(--color-plate-bg);
-  color: var(--color-plate-text);
-  border: 2px solid #000000;
+  background: linear-gradient(180deg, #ffe14c 0%, #ffd100 60%, #f5c400 100%);
+  color: #111111;
+  border: 2.5px solid #111111;
   border-radius: 6px;
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-plate);
   overflow: hidden;
-  font-weight: 800;
-  letter-spacing: 2px;
+  font-weight: 900;
+  letter-spacing: 2.5px;
+  user-select: none;
+  position: relative;
 }
 
 .uk-plate-gb {
-  background-color: #003399;
+  background: linear-gradient(180deg, #0044cc 0%, #003399 100%);
   color: #ffffff;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.625rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: 0.6875rem;
   letter-spacing: 0;
-  font-weight: 700;
+  font-weight: 800;
   height: 100%;
+  border-right: 2px solid #111111;
+}
+
+.uk-plate-gb::before {
+  content: "🇬🇧";
+  font-size: 0.75rem;
+  line-height: 1;
+  margin-bottom: 2px;
 }
 
 .uk-plate-text {
   padding: 0.35rem 0.85rem;
   font-family: var(--font-plate);
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   text-transform: uppercase;
+  color: #111111;
 }
 
-/* Vehicle Active Bar (Top Sticky Component) */
-.active-vehicle-bar {
-  background-color: var(--color-brand-dark);
-  color: var(--color-white);
-  padding: var(--spacing-xs) var(--spacing-md);
-  font-size: 0.875rem;
+/* Animated Smooth Loader */
+.loader-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  border-bottom: 2px solid var(--color-brand-accent);
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  gap: 1rem;
 }
 
-.active-vehicle-bar .vehicle-info {
+.pulsing-spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  position: relative;
+  display: inline-block;
+}
+
+.pulsing-spinner::before,
+.pulsing-spinner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3.5px solid transparent;
+}
+
+.pulsing-spinner::before {
+  border-top-color: var(--color-brand-primary);
+  border-right-color: var(--color-brand-primary);
+  animation: spin 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+}
+
+.pulsing-spinner::after {
+  border-bottom-color: var(--color-brand-accent);
+  border-left-color: var(--color-brand-accent);
+  animation: spinReverse 1.2s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spinReverse {
+  to { transform: rotate(-360deg); }
+}
+
+.loader-text {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-gray-600);
+  animation: pulseOpacity 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseOpacity {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Skeleton Loading Cards */
+.skeleton-card {
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
   display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: var(--shadow-card);
 }
 
-.active-vehicle-bar .vehicle-details {
-  font-weight: 500;
+.skeleton-box {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
 }
 
-.active-vehicle-bar .vehicle-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-.active-vehicle-bar button.btn-clear {
-  background: transparent;
-  border: none;
-  color: var(--color-brand-accent);
-  text-decoration: underline;
-  cursor: pointer;
-  font-size: 0.8125rem;
-  padding: 0;
-}
-
-/* Fitment Badges */
+/* Badges */
 .badge-fitment {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
+  padding: 0.35rem 0.75rem;
   border-radius: var(--radius-full);
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .badge-fitment.fits {
   background-color: var(--color-success-bg);
   color: var(--color-success);
-  border: 1px solid rgba(27, 138, 67, 0.2);
+  border: 1px solid var(--color-success-border);
 }
 
 .badge-fitment.not-fits {
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
-  border: 1px solid rgba(217, 56, 58, 0.2);
+  border: 1px solid var(--color-danger-border);
 }
 
-/* Spinner */
-.spinner {
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 3px solid rgba(0, 75, 151, 0.2);
-  border-top-color: var(--color-brand-primary);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  display: inline-block;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.badge-fitment.verified {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+  border: 1px solid var(--color-info-border);
 }

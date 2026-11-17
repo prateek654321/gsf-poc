@@ -40,10 +40,21 @@ export function normalizeVrm(value) {
 
 export function formatVehicleSummary(vehicle) {
   if (!vehicle) return '';
+  let engineDisplay = null;
+  if (vehicle.engineSize) {
+    const raw = String(vehicle.engineSize).trim();
+    const num = parseFloat(raw);
+    if (!Number.isNaN(num)) {
+      engineDisplay = num > 50 ? `${(num / 1000).toFixed(1)}L` : `${num.toFixed(1)}L`;
+    } else {
+      engineDisplay = raw;
+    }
+  }
+
   return [
     vehicle.make,
     vehicle.model,
-    vehicle.engineSize ? `${(Number(vehicle.engineSize) / 1000).toFixed(1)}L` : null,
+    engineDisplay,
     vehicle.fuel,
     vehicle.year,
   ].filter(Boolean).join(' • ');
@@ -213,26 +224,38 @@ export async function checkCurrentVehicleFitment(sku, categoryId = '') {
 
 
 /**
+ * Format a UK registration string for visual display with space (e.g. "WP15 VKY")
+ */
+export function formatPlateDisplay(val) {
+  const clean = (val || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (clean.length > 4) {
+    return `${clean.slice(0, 4)} ${clean.slice(4, 7)}`;
+  }
+  return clean;
+}
+
+/**
  * Initializes a vehicle registration lookup form inside a container.
  */
 export async function initVehicleLookup(container, { inputId = 'vehicle-search-vrm-input', classPrefix = 'vehicle-search' } = {}) {
   const stored = getStoredVehicle();
+  const initialDisplay = stored.vrm ? formatPlateDisplay(stored.vrm) : '';
 
   container.innerHTML = `
     <form class="${classPrefix}-form" novalidate>
-      <label class="${classPrefix}-label" for="${inputId}">
-        Enter your Vehicle Registration
-      </label>
       <div class="${classPrefix}-fieldset">
         <div class="uk-plate ${classPrefix}-plate-box">
-          <span class="uk-plate-gb">GB</span>
+          <div class="uk-plate-gb">GB</div>
           <input id="${inputId}" name="vrm" autocomplete="off" spellcheck="false"
             placeholder="ENTER REG"
+            maxlength="9"
             class="${classPrefix}-input uk-plate-text"
-            value="${stored.vrm || ''}" />
+            value="${initialDisplay}" />
         </div>
         <button type="submit" class="${classPrefix}-button button button-accent">
-          FIND PARTS
+          <span class="btn-icon">🔍</span>
+          <span class="btn-text">FIND MY PARTS</span>
+          <span class="btn-spinner pulsing-spinner" style="display:none; width: 20px; height: 20px; margin-left: 6px;"></span>
         </button>
       </div>
       <div class="${classPrefix}-message" aria-live="polite"></div>
@@ -243,9 +266,13 @@ export async function initVehicleLookup(container, { inputId = 'vehicle-search-v
   const input = container.querySelector(`#${inputId}`);
   const message = container.querySelector(`.${classPrefix}-message`);
   const button = container.querySelector('button');
+  const btnText = button.querySelector('.btn-text');
+  const btnSpinner = button.querySelector('.btn-spinner');
 
+  // Input auto-formatting for UK plate
   input.addEventListener('input', (e) => {
-    e.target.value = e.target.value.toUpperCase();
+    const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    e.target.value = formatPlateDisplay(raw);
   });
 
   form.addEventListener('submit', async (event) => {
@@ -253,14 +280,20 @@ export async function initVehicleLookup(container, { inputId = 'vehicle-search-v
     const vrm = normalizeVrm(input.value);
 
     if (!vrm || vrm.length < 2 || vrm.length > 8) {
-      message.textContent = 'Please enter a valid UK registration number.';
+      message.innerHTML = '⚠️ Please enter a valid UK registration plate (e.g. <strong>WP15 VKY</strong>).';
       message.className = `${classPrefix}-message error`;
       return;
     }
 
-    message.textContent = 'Checking vehicle & fitment parts...';
+    message.innerHTML = `
+      <div class="inline-search-loader">
+        <span class="pulsing-spinner" style="width: 18px; height: 18px;"></span>
+        <span>Searching UK DVLA vehicle database & compatibility catalog for <strong>${vrm}</strong>...</span>
+      </div>
+    `;
     message.className = `${classPrefix}-message loading`;
     button.disabled = true;
+    btnSpinner.style.display = 'inline-block';
 
     try {
       const urlParams = new URLSearchParams(window.location.search);
@@ -268,19 +301,20 @@ export async function initVehicleLookup(container, { inputId = 'vehicle-search-v
 
       const result = await lookupVrmAndFetchSkus(vrm, categoryId);
 
-      message.textContent = `${result.summary || vrm} found!`;
+      message.innerHTML = `✓ Vehicle Identified: <strong>${result.summary || vrm}</strong>. Updating parts...`;
       message.className = `${classPrefix}-message success`;
 
       if (window.location.pathname === '/' || window.location.pathname.endsWith('index.html')) {
         setTimeout(() => {
           window.location.href = '/plp.html';
-        }, 400);
+        }, 500);
       }
     } catch (error) {
-      message.textContent = error.message || 'Vehicle not found.';
+      message.innerHTML = `⚠️ ${error.message || 'Vehicle not found. Please verify your registration number.'}`;
       message.className = `${classPrefix}-message error`;
     } finally {
       button.disabled = false;
+      btnSpinner.style.display = 'none';
     }
   });
 }

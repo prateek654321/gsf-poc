@@ -4,7 +4,8 @@
 
 export const MAGENTO_CONFIG = {
   graphqlEndpoint: 'https://gsf-carparts-staging.agilecollab.com/graphql',
-  restEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/V1',
+  restEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1',
+  vrmDetailsEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vrmdetails',
   specialCoupon: 'GSF22',
 };
 
@@ -282,9 +283,10 @@ export async function fetchProductBySku(sku) {
 
 /**
  * REST: VRM Vehicle Details Lookup
+ * Uses https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vrmdetails?vrm={vrm}
  */
 export async function fetchVrmDetails(vrm) {
-  const url = `${MAGENTO_CONFIG.restEndpoint}/gsf-vrm/vrmdetails?vrm=${encodeURIComponent(vrm)}`;
+  const url = `${MAGENTO_CONFIG.vrmDetailsEndpoint}?vrm=${encodeURIComponent(vrm)}`;
   const response = await fetch(url, {
     method: 'GET',
     headers: { Accept: 'application/json' },
@@ -297,19 +299,26 @@ export async function fetchVrmDetails(vrm) {
   const data = await response.json();
   const entry = Array.isArray(data) ? data[0] : data;
 
-  if (!entry || !entry.vrm) {
-    throw new Error('Vehicle not found');
+  if (!entry) {
+    throw new Error('Vehicle not found. Please verify your registration number.');
   }
 
-  const { session, vehicle } = entry.vrm;
+  const session = entry.session || entry.vrm?.session;
+  const vehicle = entry.vehicle || entry.vrm?.vehicle;
+
   if (session?.statusCode && session.statusCode !== 'Vehicle_Found') {
-    throw new Error(session.statusCode.replace(/_/g, ' ') || 'Vehicle not found');
+    const errorMsg = session.statusCode === 'VehicleNotFound'
+      ? 'Vehicle not found. Please check your registration plate and try again.'
+      : session.statusCode.replace(/_/g, ' ');
+    throw new Error(errorMsg);
   }
+
   if (vehicle?.statusCode && vehicle.statusCode !== 'Ok') {
     throw new Error(vehicle.statusCode || 'Vehicle lookup failed');
   }
+
   if (!vehicle) {
-    throw new Error('Vehicle not found');
+    throw new Error('Vehicle details could not be retrieved.');
   }
 
   const componentIds = (vehicle.components || []).map((c) => String(c.id));

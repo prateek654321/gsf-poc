@@ -21,54 +21,64 @@ function renderVehicleSummary(container, vrm, summary, vehicle) {
   const summaryEl = document.createElement('div');
   summaryEl.className = 'vehicle-search-summary';
 
+  // Left: Car photo / icon
+  const mediaCol = document.createElement('div');
+  mediaCol.className = 'vehicle-summary-media';
   if (vehicle?.imageUrl) {
     const image = document.createElement('img');
     image.className = 'vehicle-search-image';
     image.src = vehicle.imageUrl;
     image.alt = displaySummary;
     image.loading = 'lazy';
-    summaryEl.append(image);
+    mediaCol.append(image);
   } else {
-    const placeholder = document.createElement('div');
-    placeholder.className = 'vehicle-search-image-placeholder';
-    placeholder.textContent = '🚗';
-    summaryEl.append(placeholder);
+    mediaCol.innerHTML = `
+      <div class="vehicle-icon-avatar">
+        <span>🚗</span>
+      </div>
+    `;
   }
 
+  // Middle: Info
   const details = document.createElement('div');
   details.className = 'vehicle-search-details';
 
-  const title = document.createElement('p');
-  title.className = 'vehicle-search-summary-text';
-  title.textContent = displaySummary;
-
   const regBadge = document.createElement('div');
-  regBadge.className = 'uk-plate';
+  regBadge.className = 'uk-plate mini';
   regBadge.innerHTML = `
     <span class="uk-plate-gb">GB</span>
     <span class="uk-plate-text">${vrm}</span>
   `;
 
+  const title = document.createElement('h3');
+  title.className = 'vehicle-search-summary-text';
+  title.textContent = `${vehicle?.make || ''} ${vehicle?.model || ''}`.trim() || displaySummary;
+
+  const specs = document.createElement('p');
+  specs.className = 'vehicle-search-specs';
+  specs.textContent = displaySummary;
+
   const fitBadge = document.createElement('span');
   fitBadge.className = 'badge-fitment fits';
-  fitBadge.textContent = '✓ Guaranteed Fitment Active';
+  fitBadge.innerHTML = `✓ Active Vehicle: Catalog Filtered for ${vrm}`;
 
-  details.append(regBadge, title, fitBadge);
+  details.append(regBadge, title, specs, fitBadge);
 
+  // Right: Action button
   const actions = document.createElement('div');
   actions.className = 'vehicle-search-actions';
 
   const changeBtn = document.createElement('button');
   changeBtn.type = 'button';
-  changeBtn.className = 'btn btn-outline btn-sm';
-  changeBtn.textContent = 'Change Vehicle';
+  changeBtn.className = 'btn btn-outline btn-change-vehicle';
+  changeBtn.innerHTML = `🔄 Change Vehicle`;
   changeBtn.addEventListener('click', () => {
     clearVehicleState();
   });
 
   actions.append(changeBtn);
 
-  summaryEl.append(details, actions);
+  summaryEl.append(mediaCol, details, actions);
   container.append(summaryEl);
 }
 
@@ -78,23 +88,22 @@ export default async function decorate(block) {
   const inner = document.createElement('div');
   inner.className = 'vehicle-search-inner';
 
-  const heading = document.createElement('h2');
-  heading.className = 'vehicle-search-heading';
-  heading.textContent = 'Find Parts for Your Vehicle';
-
-  const description = document.createElement('p');
-  description.className = 'vehicle-search-description';
-  description.textContent = 'Enter your UK registration number to filter parts 100% guaranteed to fit.';
+  const headingBox = document.createElement('div');
+  headingBox.className = 'vehicle-search-header';
+  headingBox.innerHTML = `
+    <span class="vehicle-search-tag">REGISTRATION LOOKUP</span>
+    <h2 class="vehicle-search-heading">Find Parts That Fit Your Vehicle</h2>
+    <p class="vehicle-search-description">Enter your UK vehicle registration to see parts 100% guaranteed to fit.</p>
+  `;
 
   const formContainer = document.createElement('div');
   formContainer.className = 'vehicle-search-form-wrapper';
-  formContainer.hidden = Boolean(stored.hasVehicle);
 
   const summaryContainer = document.createElement('div');
   summaryContainer.className = 'vehicle-search-summary-container';
   summaryContainer.hidden = !stored.hasVehicle;
 
-  inner.append(heading, description, formContainer, summaryContainer);
+  inner.append(headingBox, formContainer, summaryContainer);
   block.replaceChildren(inner);
 
   if (stored.hasVehicle) {
@@ -114,15 +123,16 @@ export default async function decorate(block) {
   window.addEventListener('vehicle-lookup:updated', (event) => {
     const { vrm, summary, vehicle } = event.detail;
     summaryContainer.hidden = false;
-    formContainer.hidden = true;
     renderVehicleSummary(summaryContainer, vrm, summary, vehicle);
   });
 
   window.addEventListener('vehicle-lookup:cleared', () => {
     summaryContainer.hidden = true;
-    formContainer.hidden = false;
     const input = formContainer.querySelector('input');
-    if (input) input.value = '';
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
     const msg = formContainer.querySelector('.vehicle-search-message');
     if (msg) msg.textContent = '';
   });

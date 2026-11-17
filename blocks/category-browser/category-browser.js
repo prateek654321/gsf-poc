@@ -44,7 +44,10 @@ export default async function decorate(block) {
       <div class="parent-categories-section">
         <h3 class="section-title">Select Department</h3>
         <div class="parent-categories-grid">
-          <div class="spinner"></div>
+          <div class="loader-container">
+            <div class="pulsing-spinner" style="width:36px; height:36px;"></div>
+            <p class="loader-text">Loading catalog departments...</p>
+          </div>
         </div>
       </div>
 
