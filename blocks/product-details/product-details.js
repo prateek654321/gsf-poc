@@ -84,7 +84,7 @@ export default async function decorate(block) {
   block.innerHTML = renderPdpSkeleton();
 
   const urlParams = new URLSearchParams(window.location.search);
-  const sku = urlParams.get('sku') || 'A2AAMS100';
+  const sku = urlParams.get('sku') || 'MPRMBP2285';
 
   let product = null;
   try {

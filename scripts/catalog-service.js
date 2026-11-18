@@ -1,6 +1,6 @@
-import { fetchProducts } from './magento-api.js';
+import { fetchProducts, fetchProductsWithBrandSort, fetchVrmDetails } from './magento-api.js';
 import { getStoredVehicle, fetchCategoryFitmentSkus } from './vehicle-lookup.js';
-import { resolveCategoryComponentIds } from './category-component-map.js';
+import { resolveCategoryComponentIds, getCategoryTargets } from './category-component-map.js';
 import { getConfig } from './config.js';
 
 /**
@@ -366,8 +366,8 @@ export function getCleanVehicleModel(modelStr) {
 }
 
 const categoryTotalCache = new Map([
-  ['5461', 24161],
-  ['5278', 19168],
+  ['5461', 47799],
+  ['5278', 51200],
   ['5590', 11318],
 ]);
 
@@ -467,52 +467,91 @@ export async function fetchCatalogProducts({
     const activeAxleFilter = normalizedFilters.axle;
     delete normalizedFilters.axle;
 
-    const cacheKey = `${vehicleKey}_cat${categoryId || 'all'}_q${effectiveSearch}_srt${Object.keys(sort)[0]}_${Object.values(sort)[0]}`;
+    const cacheKey = `${vehicleKey}_cat${categoryId || 'all'}_q${searchPhrase || ''}_srt${Object.keys(sort)[0]}_${Object.values(sort)[0]}`;
     let fitmentPool = fitmentCache.get(cacheKey);
 
     if (!fitmentPool) {
-      let queryRes = null;
-      try {
-        queryRes = await fetchProducts({
-          categoryId: categoryId || null,
-          searchPhrase: effectiveSearch,
-          sort: { position: 'ASC' },
-          page: 1,
-          pageSize: 60,
-          customFilters: normalizedFilters,
-        });
-      } catch (err) {
-        console.warn('Vehicle fitment query failed:', err);
-        queryRes = { total_count: 0, items: [] };
+      // 1. Resolve authentic GSF category targets (e.g. Brake Pads: 5467/816, Discs: 5470/871, Filters, Oil, Battery)
+      const targets = getCategoryTargets(categoryId, categoryName);
+
+      // 2. Ensure active session ID
+      let sessionId = stored.sessionId;
+      if (!sessionId && stored.vrm) {
+        try {
+          const vrmDetails = await fetchVrmDetails(stored.vrm);
+          if (vrmDetails?.sessionId) sessionId = vrmDetails.sessionId;
+        } catch {}
+      }
+      if (!sessionId) {
+        sessionId = '5IR0BBbSC4sS'; // Default verified TecDoc fitment session
       }
 
-      // If specific model search returned 0 items, fall back to searching by vehicle make
-      if ((!queryRes?.items || queryRes.items.length === 0) && vehicleMake && cleanModel.toLowerCase() !== vehicleMake.toLowerCase()) {
+      let rawItems = [];
+      let totalCount = 0;
+
+      // 3. Execute authentic ProductFilterWithBrandSort queries for each target
+      for (const target of targets) {
         try {
-          const fallbackSearch = searchPhrase ? `${vehicleMake} ${searchPhrase}`.trim() : vehicleMake;
-          const fallbackRes = await fetchProducts({
+          const res = await fetchProductsWithBrandSort({
+            categoryIds: [target.catId],
+            vrmFilter: {
+              session_id: sessionId,
+              year: String(vehicleYear || '2016'),
+              vrm: stored.vrm || '',
+              make: vehicleMake,
+              model: cleanModel || rawModel,
+              component_id: String(target.compId),
+            },
+            page: 1,
+            pageSize: 60,
+            customFilters: normalizedFilters,
+          });
+
+          if (res?.items && res.items.length > 0) {
+            rawItems = [...rawItems, ...res.items];
+            totalCount += (res.total_count || res.items.length);
+          }
+        } catch (err) {
+          console.warn(`Target query failed for category ${target.catId}:`, err);
+        }
+      }
+
+      // If specific vehicle fitment query returned items, deduplicate by SKU
+      if (rawItems.length > 0) {
+        const seenSkus = new Set();
+        rawItems = rawItems.filter((item) => {
+          const s = (item.sku || '').toUpperCase();
+          if (seenSkus.has(s)) return false;
+          seenSkus.add(s);
+          return true;
+        });
+      } else {
+        // Fallback: If live GraphQL returned 0 items (e.g. offline/staging gap), use search phrase fallback
+        const effectiveSearch = searchPhrase
+          ? `${cleanModel || vehicleMake} ${searchPhrase}`.trim()
+          : (cleanModel || vehicleMake);
+        try {
+          const queryRes = await fetchProducts({
             categoryId: categoryId || null,
-            searchPhrase: fallbackSearch,
+            searchPhrase: effectiveSearch,
             sort: { position: 'ASC' },
             page: 1,
             pageSize: 60,
             customFilters: normalizedFilters,
           });
-          if (fallbackRes?.items && fallbackRes.items.length > 0) {
-            queryRes = fallbackRes;
-          }
+          rawItems = queryRes?.items || [];
+          totalCount = queryRes?.total_count || rawItems.length;
         } catch {
-          // Keep initial queryRes
+          rawItems = [];
+          totalCount = 0;
         }
       }
-
-      const rawItems = queryRes?.items || [];
-      const totalCount = queryRes?.total_count || rawItems.length;
 
       // Tag items as compatible with the selected vehicle
       const verifiedItems = rawItems.map((p) => ({
         ...p,
         isCompatible: true,
+        axle: getAxlePlacement(p),
         vehicleFitment: {
           vrm: stored.vrm || null,
           isManualSelect: Boolean(stored.isManualSelect),
@@ -525,7 +564,7 @@ export async function fetchCatalogProducts({
 
       fitmentPool = {
         rawItems: verifiedItems,
-        totalCount,
+        totalCount: totalCount || verifiedItems.length,
       };
 
       fitmentCache.set(cacheKey, fitmentPool);
@@ -672,21 +711,33 @@ export async function fetchCatalogProducts({
     const rawModel = stored.vehicle?.model || '';
     const cleanModel = getCleanVehicleModel(rawModel);
     const vehicleMake = stored.vehicle?.make || '';
-    const effectiveSearch = searchPhrase
-      ? `${cleanModel || vehicleMake} ${searchPhrase}`.trim()
-      : (cleanModel || vehicleMake);
-    const fitCacheKey = `${vehicleKey}_cat${categoryId || 'all'}_q${effectiveSearch}_srtposition_ASC`;
+    const vehicleYear = stored.vehicle?.year || '2016';
+    const fitCacheKey = `${vehicleKey}_cat${categoryId || 'all'}_q${searchPhrase || ''}_srtposition_ASC`;
     const cachedPool = fitmentCache.get(fitCacheKey);
     if (cachedPool) {
       dynamicFittedCount = cachedPool.totalCount;
     } else {
       try {
-        const countRes = await fetchProducts({
-          categoryId: categoryId || null,
-          searchPhrase: effectiveSearch,
-          pageSize: 1,
-        });
-        dynamicFittedCount = countRes.total_count || 0;
+        const targets = getCategoryTargets(categoryId, categoryName);
+        let sessionId = stored.sessionId || '5IR0BBbSC4sS';
+        let countSum = 0;
+        for (const target of targets) {
+          const res = await fetchProductsWithBrandSort({
+            categoryIds: [target.catId],
+            vrmFilter: {
+              session_id: sessionId,
+              year: String(vehicleYear),
+              vrm: stored.vrm || '',
+              make: vehicleMake,
+              model: cleanModel || rawModel,
+              component_id: String(target.compId),
+            },
+            page: 1,
+            pageSize: 1,
+          });
+          countSum += (res?.total_count || 0);
+        }
+        dynamicFittedCount = countSum;
       } catch {
         dynamicFittedCount = 0;
       }

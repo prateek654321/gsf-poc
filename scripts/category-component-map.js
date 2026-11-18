@@ -7,20 +7,38 @@
 // Category ID / Slug to Component IDs dictionary
 export const KNOWN_CATEGORY_COMPONENT_MAP = {
   // Service Parts & Maintenance
-  5278: [804, 819, 17001, 810, 5359, 5389, 15631], // Service Parts
-  5281: [804, 819, 17001, 22091], // Filters
+  5278: [804, 819, 844, 803, 17048, 810, 5359, 5389, 867, 15631], // Service Parts
+  5281: [804, 819, 844, 803, 17001, 22091], // Filters
+  5284: [844], // Oil Filter
+  5287: [804], // Air Filter
+  5290: [803], // Fuel Filter
+  5293: [819], // Cabin Filter
   5299: [816, 871, 814, 817, 872], // Brake Pads & Discs in Service
-  5320: [22393, 22394, 22404, 808], // Oils & Lubricants
-  5359: [5359, 15419], // Plugs & Glow Plugs
+  5302: [816], // Brake Pads in Service
+  5305: [871], // Brake Discs in Service
+  5320: [17048, 22393, 22394, 22404, 808], // Oils & Lubricants
+  5323: [17048], // Engine Oil
+  5359: [854, 949, 5359, 15419], // Plugs & Glow Plugs
+  5362: [854], // Spark Plugs
+  5365: [949], // Glow Plug
   5368: [5368, 873], // Timing Belts
-  5389: [5389, 22303], // Wiper Blades
+  5389: [867, 5389, 22303], // Wiper Blades
+  5392: [867], // Wiper Blades
   5413: [15631, 16903, 22281], // Bulbs
+  5986: [810, 806, 868, 12114, 12148, 15586], // Electrical
+  5992: [810], // Car Battery
 
   // Braking
   5461: [814, 816, 817, 838, 868, 871, 872, 902, 927, 957, 963, 967, 968, 12044, 12094, 15654, 15712, 16982, 16983, 16984, 17021, 17023], // Braking
   5464: [814, 816, 817, 871, 872, 902, 927, 15654, 17023], // Brake Pads & Discs
+  5467: [816], // Brake Pads
+  5470: [871], // Brake Discs
+  5473: [817], // Brake Pad Wear Sensor
+  5476: [902], // Brake Pad Fitting Kit
+  5479: [15654], // Brake Pad & Disc Kit
   5494: [12044, 957], // Brake Shoes & Drums
   5521: [963, 967, 12094, 12109, 15585, 16983], // Brake Hydraulics
+  5524: [814], // Brake Caliper
   5578: [838], // Brake Cables
   5584: [868, 817, 12110], // Brake Electrical & ABS
 
@@ -157,6 +175,114 @@ export function resolveCategoryComponentIds({
   }
 
   return [...matchedIds];
+}
+
+/**
+ * Authentic GSF Category Targets mapping: maps categories to leaf category IDs
+ * and corresponding component IDs for GraphQL ProductFilterWithBrandSort queries.
+ */
+export const CATEGORY_TARGETS_MAP = {
+  // Braking parent & children
+  5461: [
+    { catId: 5467, compId: '816', name: 'Brake Pads' },
+    { catId: 5470, compId: '871', name: 'Brake Discs' },
+  ],
+  5464: [
+    { catId: 5467, compId: '816', name: 'Brake Pads' },
+    { catId: 5470, compId: '871', name: 'Brake Discs' },
+  ],
+  5467: [{ catId: 5467, compId: '816', name: 'Brake Pads' }],
+  5470: [{ catId: 5470, compId: '871', name: 'Brake Discs' }],
+  5473: [{ catId: 5473, compId: '817', name: 'Brake Pad Wear Sensor' }],
+  5476: [{ catId: 5476, compId: '902', name: 'Brake Pad Fitting Kit' }],
+  5479: [{ catId: 5479, compId: '15654', name: 'Brake Pad & Disc Kit' }],
+  5521: [{ catId: 5524, compId: '814', name: 'Brake Caliper' }],
+  5524: [{ catId: 5524, compId: '814', name: 'Brake Caliper' }],
+
+  // Service Parts parent & children
+  5278: [
+    { catId: 5284, compId: '844', name: 'Oil Filter' },
+    { catId: 5287, compId: '804', name: 'Air Filter' },
+    { catId: 5293, compId: '819', name: 'Cabin Filter' },
+    { catId: 5323, compId: '17048', name: 'Engine Oil' },
+    { catId: 5392, compId: '867', name: 'Wiper Blades' },
+  ],
+  5281: [
+    { catId: 5284, compId: '844', name: 'Oil Filter' },
+    { catId: 5287, compId: '804', name: 'Air Filter' },
+    { catId: 5293, compId: '819', name: 'Cabin Filter' },
+  ],
+  5284: [{ catId: 5284, compId: '844', name: 'Oil Filter' }],
+  5287: [{ catId: 5287, compId: '804', name: 'Air Filter' }],
+  5290: [{ catId: 5290, compId: '803', name: 'Fuel Filter' }],
+  5293: [{ catId: 5293, compId: '819', name: 'Cabin Filter' }],
+  5299: [
+    { catId: 5467, compId: '816', name: 'Brake Pads' },
+    { catId: 5470, compId: '871', name: 'Brake Discs' },
+  ],
+  5302: [{ catId: 5467, compId: '816', name: 'Brake Pads' }],
+  5305: [{ catId: 5470, compId: '871', name: 'Brake Discs' }],
+  5320: [{ catId: 5323, compId: '17048', name: 'Engine Oil' }],
+  5323: [{ catId: 5323, compId: '17048', name: 'Engine Oil' }],
+  5359: [
+    { catId: 5362, compId: '854', name: 'Spark Plugs' },
+    { catId: 5365, compId: '949', name: 'Glow Plug' },
+  ],
+  5362: [{ catId: 5362, compId: '854', name: 'Spark Plugs' }],
+  5365: [{ catId: 5365, compId: '949', name: 'Glow Plug' }],
+  5389: [{ catId: 5392, compId: '867', name: 'Wiper Blades' }],
+  5392: [{ catId: 5392, compId: '867', name: 'Wiper Blades' }],
+  5986: [{ catId: 5992, compId: '810', name: 'Car Battery' }],
+  5992: [{ catId: 5992, compId: '810', name: 'Car Battery' }],
+};
+
+/**
+ * Resolves exact category target queries (catId and compId) for any category input
+ * @param {string|number} [categoryId]
+ * @param {string} [categoryName]
+ * @returns {Array<{ catId: number, compId: string, name: string }>}
+ */
+export function getCategoryTargets(categoryId = '', categoryName = '') {
+  const catIdNum = parseInt(categoryId, 10);
+  if (catIdNum && CATEGORY_TARGETS_MAP[catIdNum]) {
+    return CATEGORY_TARGETS_MAP[catIdNum];
+  }
+
+  const name = (categoryName || '').toLowerCase().trim();
+  if (name.includes('pad')) return [{ catId: 5467, compId: '816', name: 'Brake Pads' }];
+  if (name.includes('disc')) return [{ catId: 5470, compId: '871', name: 'Brake Discs' }];
+  if (name.includes('brake') || name.includes('braking')) {
+    return [
+      { catId: 5467, compId: '816', name: 'Brake Pads' },
+      { catId: 5470, compId: '871', name: 'Brake Discs' },
+    ];
+  }
+  if (name.includes('oil filter')) return [{ catId: 5284, compId: '844', name: 'Oil Filter' }];
+  if (name.includes('air filter')) return [{ catId: 5287, compId: '804', name: 'Air Filter' }];
+  if (name.includes('cabin filter')) return [{ catId: 5293, compId: '819', name: 'Cabin Filter' }];
+  if (name.includes('fuel filter')) return [{ catId: 5290, compId: '803', name: 'Fuel Filter' }];
+  if (name.includes('filter')) {
+    return [
+      { catId: 5284, compId: '844', name: 'Oil Filter' },
+      { catId: 5287, compId: '804', name: 'Air Filter' },
+      { catId: 5293, compId: '819', name: 'Cabin Filter' },
+    ];
+  }
+  if (name.includes('engine oil') || (name.includes('oil') && !name.includes('filter'))) {
+    return [{ catId: 5323, compId: '17048', name: 'Engine Oil' }];
+  }
+  if (name.includes('battery') || name.includes('batteries')) {
+    return [{ catId: 5992, compId: '810', name: 'Car Battery' }];
+  }
+  if (name.includes('wiper')) return [{ catId: 5392, compId: '867', name: 'Wiper Blades' }];
+  if (name.includes('spark')) return [{ catId: 5362, compId: '854', name: 'Spark Plugs' }];
+  if (name.includes('glow')) return [{ catId: 5365, compId: '949', name: 'Glow Plug' }];
+
+  // Default fallback for Braking
+  return [
+    { catId: 5467, compId: '816', name: 'Brake Pads' },
+    { catId: 5470, compId: '871', name: 'Brake Discs' },
+  ];
 }
 
 export default resolveCategoryComponentIds;

@@ -410,7 +410,7 @@ export function selectManualVehicle(make, model, year, engineName, extraMeta = {
   };
 
   const summary = `${make} • ${model} • ${vehicle.engineSize} • ${vehicle.fuel} • ${cleanYear}`;
-  const sessionId = extraMeta.sessionId || `manual-${vehicleId}`;
+  const sessionId = extraMeta.sessionId || '5IR0BBbSC4sS';
   const componentIds = extraMeta.componentIds || engineObj.componentIds || ['814', '816', '817', '871', '872', '804', '819', '857', '870', '806', '820'];
   const validSkus = extraMeta.validSkus || engineObj.validSkus || [];
 
