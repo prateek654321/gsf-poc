@@ -18,7 +18,7 @@ export default async function decorate(block) {
   brandBar.className = 'header-brand-bar';
 
   const logo = document.createElement('a');
-  logo.href = '/';
+  logo.href = '/index.html';
   logo.className = 'header-logo';
   logo.innerHTML = `
     <div class="logo-box">

@@ -1,0 +1,28 @@
+{
+  "total": 4,
+  "offset": 0,
+  "limit": 4,
+  "columns": [
+    "Source",
+    "Destination"
+  ],
+  "data": [
+    {
+      "Source": "/",
+      "Destination": "/index.html"
+    },
+    {
+      "Source": "/categories",
+      "Destination": "/categories.html"
+    },
+    {
+      "Source": "/plp",
+      "Destination": "/plp.html"
+    },
+    {
+      "Source": "/pdp",
+      "Destination": "/pdp.html"
+    }
+  ],
+  ":type": "sheet"
+}

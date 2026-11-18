@@ -56,7 +56,7 @@ export default async function decorate(block) {
     <div class="pdp-container">
       <!-- Breadcrumb -->
       <nav class="pdp-breadcrumbs">
-        <a href="/">Home</a> <span>/</span>
+        <a href="/index.html">Home</a> <span>/</span>
         <a href="/plp.html">Parts</a> <span>/</span>
         <span class="breadcrumb-current">${product.name}</span>
       </nav>
