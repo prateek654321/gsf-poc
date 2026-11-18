@@ -139,6 +139,11 @@ export default async function decorate(block) {
     const status = await checkCurrentVehicleFitment(product.sku, categoryId);
 
     if (status.hasVehicle) {
+      const isManual = Boolean(status.vehicle?.isManualSelect || !status.vrm);
+      const targetLabel = isManual
+        ? (status.summary || `${status.vehicle?.make || ''} ${status.vehicle?.model || ''}`.trim())
+        : `${status.summary || status.vrm} (${status.vrm})`;
+
       if (status.isCompatible) {
         fitmentBox.className = 'pdp-fitment-box fits';
         fitmentBox.innerHTML = `
@@ -146,7 +151,7 @@ export default async function decorate(block) {
             <span class="fitment-icon">✓</span>
             <div>
               <strong>Guaranteed to Fit Your Vehicle</strong>
-              <p>Confirmed compatible with <strong>${status.summary || status.vrm}</strong> (${status.vrm})</p>
+              <p>Confirmed compatible with <strong>${targetLabel}</strong></p>
             </div>
           </div>
           <button type="button" class="btn-fitment-details-toggle" aria-expanded="false">
@@ -159,7 +164,7 @@ export default async function decorate(block) {
               <div class="spec-col">
                 <h5 class="specs-col-heading">Verified Vehicle Match</h5>
                 <ul class="specs-list">
-                  <li><span class="spec-lbl">Registration:</span> <span class="spec-val">${status.vrm}</span></li>
+                  ${!isManual && status.vrm ? `<li><span class="spec-lbl">Registration:</span> <span class="spec-val">${status.vrm}</span></li>` : ''}
                   <li><span class="spec-lbl">Vehicle:</span> <span class="spec-val">${status.vehicle?.make || ''} ${status.vehicle?.model || ''}</span></li>
                   <li><span class="spec-lbl">Engine / Fuel:</span> <span class="spec-val">${status.vehicle?.engineSize || ''} ${status.vehicle?.fuel || ''}</span></li>
                   <li><span class="spec-lbl">Year of Reg:</span> <span class="spec-val">${status.vehicle?.year || ''}</span></li>
@@ -188,7 +193,7 @@ export default async function decorate(block) {
             <span class="fitment-icon">✕</span>
             <div>
               <strong>Does Not Fit Your Vehicle</strong>
-              <p>This part is not compatible with <strong>${status.summary || status.vrm}</strong> (${status.vrm}).</p>
+              <p>This part is not compatible with <strong>${targetLabel}</strong>.</p>
             </div>
           </div>
           <button type="button" class="btn-fitment-details-toggle" aria-expanded="false">
@@ -198,10 +203,10 @@ export default async function decorate(block) {
           </button>
           <div class="fitment-specs-drawer" style="display: none;">
             <div class="not-fits-note">
-              <p>The mounting specifications or component dimensions of this part do not match the chassis and engine code of your <strong>${status.summary || status.vrm}</strong>.</p>
+              <p>The mounting specifications or component dimensions of this part do not match the chassis and engine code of your <strong>${targetLabel}</strong>.</p>
             </div>
             <a href="/plp.html?category_id=${categoryId}&category_name=${encodeURIComponent(categoryName)}" class="btn-find-compatible">
-              <span>Browse Verified Parts for ${status.vrm}</span>
+              <span>Browse Verified Parts for ${isManual ? `${status.vehicle?.make || ''} ${status.vehicle?.model || ''}`.trim() : status.vrm}</span>
               <span>→</span>
             </a>
           </div>

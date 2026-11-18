@@ -54,10 +54,13 @@ export default async function decorate(block) {
   function renderGarageWidget(container) {
     const stored = getStoredVehicle();
     const garage = getGarageVehicles();
-    const hasActive = Boolean(stored.hasVehicle && stored.vrm);
+    const hasActive = Boolean(stored.hasVehicle);
+    const isManualActive = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
 
     const activeDisplay = hasActive
-      ? `${formatPlateDisplay(stored.vrm)} • ${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim()
+      ? (isManualActive
+        ? `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''} ${stored.vehicle?.year ? `(${stored.vehicle.year})` : ''}`.trim()
+        : `${formatPlateDisplay(stored.vrm)} • ${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim())
       : (garage.length > 0 ? `${garage.length} Saved Vehicles` : 'Add Vehicle');
 
     container.innerHTML = `
@@ -80,31 +83,49 @@ export default async function decorate(block) {
         <div class="garage-vehicle-list">
           ${garage.length === 0 ? '<p class="garage-empty">No vehicles saved in your garage yet.</p>' : ''}
           ${garage.map((v) => {
-            const isActive = hasActive && normalizeVrm(v.vrm) === normalizeVrm(stored.vrm);
-            const mot = v.motHealth || getVehicleMotAndHealth(v.vrm, v.vehicle?.year);
+            const isItemManual = Boolean(v.vehicle?.isManualSelect || !v.vrm);
+            const isActive = hasActive && (
+              (!isItemManual && stored.vrm && normalizeVrm(v.vrm) === normalizeVrm(stored.vrm))
+              || (isItemManual && isManualActive && v.summary === stored.summary)
+            );
+            const mot = (!isItemManual && v.vrm) ? (v.motHealth || getVehicleMotAndHealth(v.vrm, v.vehicle?.year)) : null;
+            const itemKey = v.id || v.vrm || v.summary;
+
             return `
               <div class="garage-vehicle-card ${isActive ? 'is-active' : ''}">
                 <div class="garage-card-main-col">
                   <div class="garage-plate-row">
-                    <div class="garage-plate-pill">
-                      <span class="plate-gb">GB</span>
-                      <span class="plate-text">${formatPlateDisplay(v.vrm)}</span>
-                    </div>
+                    ${!isItemManual && v.vrm ? `
+                      <div class="garage-plate-pill">
+                        <span class="plate-gb">GB</span>
+                        <span class="plate-text">${formatPlateDisplay(v.vrm)}</span>
+                      </div>
+                    ` : `
+                      <div class="garage-manual-pill">
+                        <span class="manual-icon">🚗</span>
+                        <span class="manual-text">${v.vehicle?.make || ''} ${v.vehicle?.model || ''}</span>
+                      </div>
+                    `}
                     ${isActive ? '<span class="garage-status-active">✓ Active</span>' : ''}
                   </div>
                   <div class="garage-vehicle-name">${v.vehicle?.make || ''} ${v.vehicle?.model || ''}</div>
                   <div class="garage-vehicle-meta">${v.summary || ''}</div>
                   <div class="garage-health-tags">
-                    <span class="garage-mot-pill ${mot.isUrgent ? 'urgent' : 'valid'}">
-                      ${mot.isUrgent ? '⚠️' : '🟢'} MOT: ${mot.motExpiry} (${mot.daysLeft}d)
-                    </span>
-                    <span class="garage-mileage-pill">🛣️ ${mot.mileage}</span>
+                    ${mot ? `
+                      <span class="garage-mot-pill ${mot.isUrgent ? 'urgent' : 'valid'}">
+                        ${mot.isUrgent ? '⚠️' : '🟢'} MOT: ${mot.motExpiry} (${mot.daysLeft}d)
+                      </span>
+                      <span class="garage-mileage-pill">🛣️ ${mot.mileage}</span>
+                    ` : `
+                      <span class="garage-mot-pill valid">🟢 Guaranteed Fit Active</span>
+                      ${v.vehicle?.year ? `<span class="garage-mileage-pill">📅 Year ${v.vehicle.year}</span>` : ''}
+                    `}
                   </div>
                 </div>
                 <div class="garage-card-actions">
-                  <a href="/plp.html?category_id=5461&category_name=Braking&vrm=${v.vrm}" class="btn-garage-shop" title="Shop braking and service parts">Shop Parts ➔</a>
-                  ${!isActive ? `<button type="button" class="btn-select-garage-vehicle" data-vrm="${v.vrm}" title="Switch to this vehicle">Select</button>` : ''}
-                  <button type="button" class="btn-remove-garage-vehicle" data-vrm="${v.vrm}" title="Remove from garage">✕</button>
+                  <a href="/plp.html?category_id=5461&category_name=Braking${v.vrm ? `&vrm=${v.vrm}` : ''}" class="btn-garage-shop" title="Shop braking and service parts">Shop Parts ➔</a>
+                  ${!isActive ? `<button type="button" class="btn-select-garage-vehicle" data-id="${itemKey}" title="Switch to this vehicle">Select</button>` : ''}
+                  <button type="button" class="btn-remove-garage-vehicle" data-id="${itemKey}" title="Remove from garage">✕</button>
                 </div>
               </div>
             `;
@@ -158,8 +179,8 @@ export default async function decorate(block) {
     // Switch vehicle
     container.querySelectorAll('.btn-select-garage-vehicle').forEach((selectBtn) => {
       selectBtn.addEventListener('click', () => {
-        const { vrm } = selectBtn.dataset;
-        selectGarageVehicle(vrm);
+        const targetId = selectBtn.dataset.id || selectBtn.dataset.vrm;
+        selectGarageVehicle(targetId);
         dropdown.style.display = 'none';
         renderGarageWidget(container);
       });
@@ -168,8 +189,8 @@ export default async function decorate(block) {
     // Remove vehicle
     container.querySelectorAll('.btn-remove-garage-vehicle').forEach((removeBtn) => {
       removeBtn.addEventListener('click', () => {
-        const { vrm } = removeBtn.dataset;
-        removeFromGarage(vrm);
+        const targetId = removeBtn.dataset.id || removeBtn.dataset.vrm;
+        removeFromGarage(targetId);
         renderGarageWidget(container);
       });
     });

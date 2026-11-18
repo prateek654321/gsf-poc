@@ -163,13 +163,13 @@ export default async function decorate(block) {
     }
 
     if (stored.hasVehicle) {
-      countFittedEl.textContent = (result?.fittedCount || 60).toLocaleString();
-      countAllEl.textContent = (result?.allCount || result?.total_count || 24161).toLocaleString();
+      countFittedEl.textContent = (result?.fittedCount ?? 0).toLocaleString();
+      countAllEl.textContent = (result?.allCount || result?.total_count || 0).toLocaleString();
       tabFitted.title = `Showing parts guaranteed to fit ${stored.summary || stored.vrm}`;
       tabAll.title = 'Browse all products without vehicle filter';
     } else {
       countFittedEl.textContent = 'Enter Reg';
-      countAllEl.textContent = (result?.total_count || 24161).toLocaleString();
+      countAllEl.textContent = (result?.total_count || 0).toLocaleString();
       tabFitted.title = 'Enter your UK registration to filter parts';
       tabAll.title = 'Showing all products in catalog';
     }
@@ -177,6 +177,11 @@ export default async function decorate(block) {
 
   function renderFitmentAlert() {
     const stored = getStoredVehicle();
+    const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
+    const vehicleLabel = isManual
+      ? (stored.summary || `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim())
+      : `${stored.summary || stored.vrm} (${stored.vrm})`;
+
     if (stored.hasVehicle) {
       if (viewMode === 'fitted') {
         fitmentAlert.style.display = 'flex';
@@ -186,7 +191,7 @@ export default async function decorate(block) {
           <div class="fitment-alert-badge">✓</div>
           <div class="fitment-alert-text">
             <strong>Guaranteed Fitment Active:</strong> Showing only ${categoryScopeText}parts verified to fit your 
-            <strong>${stored.summary || stored.vrm}</strong> (${stored.vrm}).
+            <strong>${vehicleLabel}</strong>.
           </div>
         `;
       } else {
@@ -196,7 +201,7 @@ export default async function decorate(block) {
           <div class="fitment-alert-badge">📦</div>
           <div class="fitment-alert-text">
             <strong>Showing All Products:</strong> You are browsing all catalog items. Switch to 
-            <button type="button" class="btn-link-switch-mode"><strong>Vehicle Fit Products</strong></button> to see only parts verified for your <strong>${stored.summary || stored.vrm}</strong> (${stored.vrm}).
+            <button type="button" class="btn-link-switch-mode"><strong>Vehicle Fit Products</strong></button> to see only parts verified for your <strong>${vehicleLabel}</strong>.
           </div>
         `;
         const switchBtn = fitmentAlert.querySelector('.btn-link-switch-mode');
@@ -302,17 +307,26 @@ export default async function decorate(block) {
         || isSkuFitted(p.sku)
         || stored.validSkus?.some((s) => s.toUpperCase() === (p.sku || '').toUpperCase());
 
+      const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
+      const vehicleModelName = `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim();
+      const fitLabel = isManual
+        ? `Fits ${vehicleModelName || 'Selected Vehicle'}`
+        : `Fits ${vehicleModelName} (${stored.vrm})`.trim();
+      const notFitLabel = isManual
+        ? `Does not fit ${vehicleModelName || 'your vehicle'}`
+        : `Does not fit ${stored.vrm}`;
+
       if (isFitted) {
         fitmentBadgeHtml = `
           <div class="badge-fitment fits">
             <span class="badge-icon">✓</span>
-            <span>Fits ${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''} (${stored.vrm})</span>
+            <span>${fitLabel}</span>
           </div>`;
       } else if (viewMode === 'all') {
         fitmentBadgeHtml = `
           <div class="badge-fitment not-fitted">
             <span class="badge-icon">✕</span>
-            <span>Does not fit ${stored.vrm}</span>
+            <span>${notFitLabel}</span>
           </div>`;
       }
     }
@@ -628,7 +642,11 @@ export default async function decorate(block) {
 
       if (viewMode === 'fitted' && stored.hasVehicle) {
         const scopeText = categoryName ? `${categoryName} ` : '';
-        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> verified ${scopeText}parts for <strong>${result.vehicleSummary || result.vrm}</strong> (${result.vrm})`;
+        const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
+        const targetLabel = isManual
+          ? (result.vehicleSummary || `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim() || 'Selected Vehicle')
+          : `${result.vehicleSummary || result.vrm} (${result.vrm})`;
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> verified ${scopeText}parts for <strong>${targetLabel}</strong>`;
       } else if (stored.hasVehicle) {
         const scopeText = categoryName ? `in ${categoryName}` : 'in catalog';
         countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts ${scopeText} (All Products)`;

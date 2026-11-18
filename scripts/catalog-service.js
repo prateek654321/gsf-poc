@@ -349,6 +349,43 @@ export function buildBasicAggregations(items) {
 }
 
 /**
+ * Strips generation codes, body styles, and parenthesized specs from a vehicle model string
+ * to produce the clean core model name for Magento catalog search.
+ * E.g. "Golf Mk7 (2012-2020)" -> "Golf", "3 Series (F30 2012-2019)" -> "3 Series", "Fiesta Mk7" -> "Fiesta"
+ * @param {string} modelStr
+ * @returns {string}
+ */
+export function getCleanVehicleModel(modelStr) {
+  if (!modelStr) return '';
+  return String(modelStr)
+    .replace(/\(.*?\)/g, '')
+    .replace(/\b(Mk\s*\d+|gen\s*\d+)\b/gi, '')
+    .replace(/\b(Sportback|Saloon|Hatchback|Estate|Coupe|Coupé|Convertible|Cabriolet|Avant|Touring)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const categoryTotalCache = new Map([
+  ['5461', 24161],
+  ['5278', 19168],
+  ['5590', 11318],
+]);
+
+export async function getCategoryTotalCount(categoryId) {
+  if (!categoryId) return 24161;
+  const key = String(categoryId);
+  if (categoryTotalCache.has(key)) return categoryTotalCache.get(key);
+  try {
+    const res = await fetchProducts({ categoryId: key, pageSize: 1 });
+    const count = res.total_count || 0;
+    if (count > 0) categoryTotalCache.set(key, count);
+    return count || 24161;
+  } catch {
+    return 24161;
+  }
+}
+
+/**
  * Execute catalog query with vehicle fitment, pagination, sorting, and search
  *
  * @param {object} params
@@ -403,60 +440,92 @@ export async function fetchCatalogProducts({
 
   // 2. Local EDS App Builder / Mesh Emulation Pipeline
   const stored = getStoredVehicle();
-  const hasVehicle = Boolean(stored.hasVehicle && stored.vrm);
+  const hasVehicle = Boolean(stored.hasVehicle);
+  const vehicleKey = stored.vrm || (stored.vehicle ? `${stored.vehicle.make}_${stored.vehicle.model}_${stored.vehicle.year}`.replace(/[^a-zA-Z0-9]/g, '_') : 'vehicle');
 
-  // A) VEHICLE FITMENT FLOW: When a vehicle is searched and user is viewing fitted products
+  // A) VEHICLE FITMENT FLOW: When a vehicle is active and user is viewing fitted products
   if (hasVehicle && viewMode === 'fitted') {
-    const cacheKey = `${stored.vrm}_cat${categoryId || 'all'}_q${searchPhrase || ''}`;
+    const rawModel = stored.vehicle?.model || '';
+    const cleanModel = getCleanVehicleModel(rawModel);
+    const vehicleMake = stored.vehicle?.make || '';
+    const vehicleYear = stored.vehicle?.year || '';
+
+    // Search query for Magento: combines clean model name with any user-typed search keywords
+    const effectiveSearch = searchPhrase
+      ? `${cleanModel || vehicleMake} ${searchPhrase}`.trim()
+      : (cleanModel || vehicleMake);
+
+    // Normalize brand filter to quality attribute code if provided
+    const normalizedFilters = { ...filters };
+    if (normalizedFilters.brand && !normalizedFilters.quality) {
+      const brands = Array.isArray(normalizedFilters.brand) ? normalizedFilters.brand : [normalizedFilters.brand];
+      normalizedFilters.quality = brands.map((b) => getQualityCodeForBrand(b) || b);
+      delete normalizedFilters.brand;
+    }
+
+    // Client-side axle filter (Front Axle vs Rear Axle)
+    const activeAxleFilter = normalizedFilters.axle;
+    delete normalizedFilters.axle;
+
+    const cacheKey = `${vehicleKey}_cat${categoryId || 'all'}_q${effectiveSearch}_srt${Object.keys(sort)[0]}_${Object.values(sort)[0]}`;
     let fitmentPool = fitmentCache.get(cacheKey);
 
     if (!fitmentPool) {
-      let candidateItems = [];
-
-      // If Braking (5461) or specific category, fetch representative multi-brand parts pool
-      if (categoryId === '5461' || (!categoryId && !searchPhrase)) {
-        try {
-          const [ebcRes, borgRes, firstlineRes] = await Promise.all([
-            fetchProducts({ categoryId: '5461', sort: { position: 'ASC' }, page: 1, pageSize: 30 }),
-            fetchProducts({ categoryId: '5461', customFilters: { quality: ['90988'] }, page: 1, pageSize: 15 }),
-            fetchProducts({ categoryId: '5461', customFilters: { quality: ['90743'] }, page: 1, pageSize: 15 }),
-          ]);
-
-          candidateItems = [
-            ...(ebcRes.items || []),
-            ...(borgRes.items || []),
-            ...(firstlineRes.items || []),
-          ];
-        } catch {
-          candidateItems = [];
-        }
-      }
-
-      if (candidateItems.length === 0) {
-        const initialQuery = await fetchProducts({
+      let queryRes = null;
+      try {
+        queryRes = await fetchProducts({
           categoryId: categoryId || null,
-          searchPhrase: searchPhrase || null,
+          searchPhrase: effectiveSearch,
           sort: { position: 'ASC' },
           page: 1,
           pageSize: 60,
+          customFilters: normalizedFilters,
         });
-        candidateItems = initialQuery.items || [];
+      } catch (err) {
+        console.warn('Vehicle fitment query failed:', err);
+        queryRes = { total_count: 0, items: [] };
       }
 
-      // Tag verified fitment for the vehicle
-      const verifiedItems = candidateItems.map((p) => ({
+      // If specific model search returned 0 items, fall back to searching by vehicle make
+      if ((!queryRes?.items || queryRes.items.length === 0) && vehicleMake && cleanModel.toLowerCase() !== vehicleMake.toLowerCase()) {
+        try {
+          const fallbackSearch = searchPhrase ? `${vehicleMake} ${searchPhrase}`.trim() : vehicleMake;
+          const fallbackRes = await fetchProducts({
+            categoryId: categoryId || null,
+            searchPhrase: fallbackSearch,
+            sort: { position: 'ASC' },
+            page: 1,
+            pageSize: 60,
+            customFilters: normalizedFilters,
+          });
+          if (fallbackRes?.items && fallbackRes.items.length > 0) {
+            queryRes = fallbackRes;
+          }
+        } catch {
+          // Keep initial queryRes
+        }
+      }
+
+      const rawItems = queryRes?.items || [];
+      const totalCount = queryRes?.total_count || rawItems.length;
+
+      // Tag items as compatible with the selected vehicle
+      const verifiedItems = rawItems.map((p) => ({
         ...p,
         isCompatible: true,
         vehicleFitment: {
-          vrm: stored.vrm,
+          vrm: stored.vrm || null,
+          isManualSelect: Boolean(stored.isManualSelect),
           summary: stored.summary,
-          make: stored.vehicle?.make,
-          model: stored.vehicle?.model,
+          make: vehicleMake,
+          model: rawModel,
+          year: vehicleYear,
         },
       }));
 
       fitmentPool = {
         rawItems: verifiedItems,
+        totalCount,
       };
 
       fitmentCache.set(cacheKey, fitmentPool);
@@ -473,18 +542,18 @@ export async function fetchCatalogProducts({
       }
     }
 
-    // 1. Filter by active basic filters (quality attribute code for Brand and axle placement)
+    // 1. Filter by active filters (Brand and Axle)
     let filteredItems = fitmentPool.rawItems;
 
-    if (filters.axle) {
-      const axleArray = Array.isArray(filters.axle) ? filters.axle : [filters.axle];
+    if (activeAxleFilter) {
+      const axleArray = Array.isArray(activeAxleFilter) ? activeAxleFilter : [activeAxleFilter];
       filteredItems = filteredItems.filter((item) => {
         const itemAxle = getAxlePlacement(item);
         return axleArray.includes(itemAxle);
       });
     }
 
-    const selectedQualities = filters.quality || filters.brand || filters.manufacturer;
+    const selectedQualities = normalizedFilters.quality || normalizedFilters.brand;
     if (selectedQualities && selectedQualities.length > 0) {
       const qualityArray = (Array.isArray(selectedQualities) ? selectedQualities : [selectedQualities])
         .map((q) => String(q).toLowerCase().trim());
@@ -507,20 +576,51 @@ export async function fetchCatalogProducts({
     // 2. Sort items deterministically
     const sortedItems = sortProducts(filteredItems, sort);
 
-    // 3. Build basic aggregations based on currently available candidate pool
+    // 3. Build basic aggregations based on candidate pool
     const aggregations = buildBasicAggregations(fitmentPool.rawItems);
 
-    const totalFittedCount = sortedItems.length;
+    const totalFittedCount = activeAxleFilter ? sortedItems.length : fitmentPool.totalCount;
     const totalPages = Math.max(1, Math.ceil(totalFittedCount / targetPageSize));
     const safePage = Math.min(currentPage, totalPages);
 
     // 4. Slice exact targetPageSize items (15 on page 1, 15 on page 2)
     const startIndex = (safePage - 1) * targetPageSize;
     const endIndex = startIndex + targetPageSize;
-    const pagedItems = sortedItems.slice(startIndex, endIndex).map((item) => ({
+    let pagedItems = sortedItems.slice(startIndex, endIndex).map((item) => ({
       ...item,
       axle: getAxlePlacement(item),
     }));
+
+    // If totalFittedCount > 60 and user navigated past the initial pool, fetch that page directly from Magento
+    if (pagedItems.length === 0 && safePage > 1 && fitmentPool.totalCount > fitmentPool.rawItems.length) {
+      try {
+        const nextPageRes = await fetchProducts({
+          categoryId: categoryId || null,
+          searchPhrase: effectiveSearch,
+          sort,
+          page: safePage,
+          pageSize: targetPageSize,
+          customFilters: normalizedFilters,
+        });
+        pagedItems = (nextPageRes.items || []).map((item) => ({
+          ...item,
+          isCompatible: true,
+          axle: getAxlePlacement(item),
+          vehicleFitment: {
+            vrm: stored.vrm || null,
+            isManualSelect: Boolean(stored.isManualSelect),
+            summary: stored.summary,
+            make: vehicleMake,
+            model: rawModel,
+            year: vehicleYear,
+          },
+        }));
+      } catch {
+        // Fallback to empty slice
+      }
+    }
+
+    const allCatCount = await getCategoryTotalCount(categoryId);
 
     return {
       total_count: totalFittedCount,
@@ -533,8 +633,8 @@ export async function fetchCatalogProducts({
       aggregations,
       hasVehicle: true,
       viewMode: 'fitted',
-      fittedCount: fitmentPool.rawItems.length,
-      allCount: 24161,
+      fittedCount: fitmentPool.totalCount,
+      allCount: allCatCount,
       vrm: stored.vrm,
       vehicleSummary: stored.summary,
       categoryName: categoryName || (categoryId ? `Category ${categoryId}` : null),
@@ -544,20 +644,54 @@ export async function fetchCatalogProducts({
 
   // B) GENERAL CATALOG BROWSING FLOW (Or when user toggled 'All Products')
   const verifiedSkus = stored.validSkus || [];
+  const cleanModelLower = (getCleanVehicleModel(stored.vehicle?.model) || '').toLowerCase();
+
   const enrichItemWithVehicleFit = (item) => {
     const upperSku = (item?.sku || '').toUpperCase();
-    const fits = isSkuFitted(upperSku) || verifiedSkus.includes(upperSku);
+    const itemNameLower = (item?.name || '').toLowerCase();
+    const fits = isSkuFitted(upperSku)
+      || verifiedSkus.includes(upperSku)
+      || (cleanModelLower && itemNameLower.includes(cleanModelLower));
     return {
       ...item,
       isCompatible: fits,
+      axle: getAxlePlacement(item),
       vehicleFitment: (hasVehicle && fits) ? {
-        vrm: stored.vrm,
+        vrm: stored.vrm || null,
+        isManualSelect: Boolean(stored.isManualSelect),
         summary: stored.summary,
         make: stored.vehicle?.make,
         model: stored.vehicle?.model,
       } : null,
     };
   };
+
+  // Dynamically resolve fitted count for the badge when viewing All Products
+  let dynamicFittedCount = 0;
+  if (hasVehicle) {
+    const rawModel = stored.vehicle?.model || '';
+    const cleanModel = getCleanVehicleModel(rawModel);
+    const vehicleMake = stored.vehicle?.make || '';
+    const effectiveSearch = searchPhrase
+      ? `${cleanModel || vehicleMake} ${searchPhrase}`.trim()
+      : (cleanModel || vehicleMake);
+    const fitCacheKey = `${vehicleKey}_cat${categoryId || 'all'}_q${effectiveSearch}_srtposition_ASC`;
+    const cachedPool = fitmentCache.get(fitCacheKey);
+    if (cachedPool) {
+      dynamicFittedCount = cachedPool.totalCount;
+    } else {
+      try {
+        const countRes = await fetchProducts({
+          categoryId: categoryId || null,
+          searchPhrase: effectiveSearch,
+          pageSize: 1,
+        });
+        dynamicFittedCount = countRes.total_count || 0;
+      } catch {
+        dynamicFittedCount = 0;
+      }
+    }
+  }
 
   // Check if sort is 'price: ASC' which triggers staging Magento Elasticsearch zero-price gap
   const [sortField, sortDir] = Object.entries(sort)[0] || ['position', 'ASC'];
@@ -615,7 +749,7 @@ export async function fetchCatalogProducts({
       aggregations: buildBasicAggregations(items),
       hasVehicle,
       viewMode: 'all',
-      fittedCount: fitmentCache.get(`${stored.vrm}_cat${categoryId || 'all'}_q${searchPhrase || ''}`)?.rawItems?.length || verifiedSkus.length || 60,
+      fittedCount: dynamicFittedCount,
       allCount: total,
       vrm: stored.vrm,
       vehicleSummary: stored.summary,
@@ -679,7 +813,7 @@ export async function fetchCatalogProducts({
     aggregations: buildBasicAggregations(items),
     hasVehicle,
     viewMode: 'all',
-    fittedCount: fitmentCache.get(`${stored.vrm}_cat${categoryId || 'all'}_q${searchPhrase || ''}`)?.rawItems?.length || verifiedSkus.length || 60,
+    fittedCount: dynamicFittedCount,
     allCount: total,
     vrm: stored.vrm,
     vehicleSummary: stored.summary,

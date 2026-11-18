@@ -54,21 +54,32 @@ function renderVehicleSummary(container, vrm, summary, vehicle) {
   const details = document.createElement('div');
   details.className = 'vehicle-search-details';
 
+  const isManual = Boolean(vehicle?.isManualSelect || !vrm);
+
   const topRow = document.createElement('div');
   topRow.className = 'vehicle-summary-top-row';
 
-  const regBadge = document.createElement('div');
-  regBadge.className = 'uk-plate mini';
-  regBadge.innerHTML = `
-    <span class="uk-plate-gb">GB</span>
-    <span class="uk-plate-text">${vrm}</span>
-  `;
+  // Only display UK registration plate design when searched via VRM
+  if (!isManual && vrm) {
+    const regBadge = document.createElement('div');
+    regBadge.className = 'uk-plate mini';
+    regBadge.innerHTML = `
+      <span class="uk-plate-gb">GB</span>
+      <span class="uk-plate-text">${vrm}</span>
+    `;
+    topRow.append(regBadge);
+  } else {
+    const manualBadge = document.createElement('span');
+    manualBadge.className = 'badge-manual-vehicle';
+    manualBadge.innerHTML = `🚗 Selected Vehicle`;
+    topRow.append(manualBadge);
+  }
 
   const fitBadge = document.createElement('span');
   fitBadge.className = 'badge-fitment fits';
   fitBadge.innerHTML = `✓ Active Vehicle: Guaranteed Fit Parts Active`;
 
-  topRow.append(regBadge, fitBadge);
+  topRow.append(fitBadge);
 
   const title = document.createElement('h3');
   title.className = 'vehicle-search-summary-text';
@@ -78,22 +89,39 @@ function renderVehicleSummary(container, vrm, summary, vehicle) {
   specs.className = 'vehicle-search-specs';
   specs.textContent = displaySummary;
 
-  // MOT & Road Tax Expiry Alert
+  // MOT & Road Tax Expiry Alert: only for VRM lookups with real registration
   const motBox = document.createElement('div');
-  motBox.className = `vehicle-mot-badge ${mot.isUrgent ? 'mot-urgent' : 'mot-valid'}`;
-  motBox.innerHTML = `
-    <div class="mot-main-row">
-      <span class="mot-indicator-dot"></span>
-      <strong class="mot-label">MOT ${mot.motStatus}:</strong>
-      <span class="mot-date">${mot.motExpiry} (${mot.daysLeft} days remaining)</span>
-      <span class="mot-tax">Tax: ${mot.taxStatus}</span>
-      <span class="mot-mileage">Mileage: ${mot.mileage}</span>
-    </div>
-    <div class="mot-advice-row">
-      <span class="mot-advice-text">${mot.serviceRecommendation}</span>
-      <a href="/plp.html?category_id=5461&category_name=Braking" class="mot-parts-link">Shop Fitted Brake & Service Parts →</a>
-    </div>
-  `;
+  if (!isManual && vrm) {
+    motBox.className = `vehicle-mot-badge ${mot.isUrgent ? 'mot-urgent' : 'mot-valid'}`;
+    motBox.innerHTML = `
+      <div class="mot-main-row">
+        <span class="mot-indicator-dot"></span>
+        <strong class="mot-label">MOT ${mot.motStatus}:</strong>
+        <span class="mot-date">${mot.motExpiry} (${mot.daysLeft} days remaining)</span>
+        <span class="mot-tax">Tax: ${mot.taxStatus}</span>
+        <span class="mot-mileage">Mileage: ${mot.mileage}</span>
+      </div>
+      <div class="mot-advice-row">
+        <span class="mot-advice-text">${mot.serviceRecommendation}</span>
+        <a href="/plp.html?category_id=5461&category_name=Braking" class="mot-parts-link">Shop Fitted Brake & Service Parts →</a>
+      </div>
+    `;
+  } else {
+    motBox.className = 'vehicle-mot-badge mot-valid';
+    motBox.innerHTML = `
+      <div class="mot-main-row">
+        <span class="mot-indicator-dot" style="background: #16a34a;"></span>
+        <strong class="mot-label">Active Vehicle Match:</strong>
+        <span class="mot-date">${vehicle?.year ? `Model Year ${vehicle.year}` : 'Active Model'}</span>
+        <span class="mot-tax">Fuel: ${vehicle?.fuel || 'Standard'}</span>
+        <span class="mot-mileage">Engine: ${vehicle?.engineSize || '2.0L'}</span>
+      </div>
+      <div class="mot-advice-row">
+        <span class="mot-advice-text">🟢 Guaranteed Fitment Active: Showing parts precision-matched for ${vehicle?.make || ''} ${vehicle?.model || ''}.</span>
+        <a href="/plp.html?category_id=5461&category_name=Braking" class="mot-parts-link">Shop Fitted Brake & Service Parts →</a>
+      </div>
+    `;
+  }
 
   details.append(topRow, title, specs, motBox);
 

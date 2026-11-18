@@ -258,21 +258,25 @@ export function getStoredVehicle() {
     componentIds = [];
   }
 
-  const vrm = getCookie(COOKIE_NAMES.REG_NO) || window.localStorage.getItem(STORAGE_KEYS.VRM);
+  const vrm = getCookie(COOKIE_NAMES.REG_NO) || window.localStorage.getItem(STORAGE_KEYS.VRM) || '';
   const sessionId = getCookie(COOKIE_NAMES.SESSION_ID) || window.localStorage.getItem(STORAGE_KEYS.SESSION_ID);
   const summary = getCookie(COOKIE_NAMES.VEHICLE_SUMMARY)
     || window.localStorage.getItem(STORAGE_KEYS.VEHICLE_SUMMARY)
     || formatVehicleSummary(vehicle);
 
+  const isManual = Boolean(vehicle?.isManualSelect);
+  const displayVrm = isManual ? '' : vrm;
+
   return {
-    vrm,
+    vrm: displayVrm,
     sessionId,
     summary,
     vehicle,
     componentIds,
     componentId: window.localStorage.getItem(STORAGE_KEYS.COMPONENT_ID) || componentIds[0] || '',
     validSkus,
-    hasVehicle: Boolean(vrm && sessionId),
+    hasVehicle: Boolean((vrm || vehicle) && (sessionId || vehicle)),
+    isManualSelect: isManual,
   };
 }
 
@@ -299,16 +303,27 @@ export function saveGarageVehicles(vehicles) {
 }
 
 export function addToGarage(entry) {
-  if (!entry || !entry.vrm) return getGarageVehicles();
+  if (!entry || (!entry.vrm && !entry.vehicle)) return getGarageVehicles();
   const vehicles = [...getGarageVehicles()];
-  const normVrm = normalizeVrm(entry.vrm);
-  const existingIdx = vehicles.findIndex((v) => normalizeVrm(v.vrm) === normVrm);
+  const isManual = Boolean(entry.vehicle?.isManualSelect || !entry.vrm);
+  const entryId = isManual
+    ? (entry.id || `manual_${entry.vehicle?.make}_${entry.vehicle?.model}_${entry.vehicle?.year}_${entry.vehicle?.engineSize}`.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase())
+    : normalizeVrm(entry.vrm);
+
+  const existingIdx = vehicles.findIndex((v) => {
+    if (isManual) {
+      return v.id === entryId || (v.vehicle?.isManualSelect && v.summary === entry.summary);
+    }
+    return normalizeVrm(v.vrm) === entryId;
+  });
 
   const cleanEntry = {
-    vrm: normVrm,
+    id: entryId,
+    vrm: isManual ? '' : normalizeVrm(entry.vrm),
+    isManualSelect: isManual,
     summary: entry.summary || formatVehicleSummary(entry.vehicle),
     vehicle: entry.vehicle || null,
-    motHealth: entry.motHealth || getVehicleMotAndHealth(normVrm, entry.vehicle?.year),
+    motHealth: isManual ? null : (entry.motHealth || getVehicleMotAndHealth(entry.vrm, entry.vehicle?.year)),
     sessionId: entry.sessionId || '',
     componentIds: entry.componentIds || [],
     componentId: entry.componentId || entry.componentIds?.[0] || '',
@@ -327,14 +342,14 @@ export function addToGarage(entry) {
   return trimmed;
 }
 
-export function selectGarageVehicle(vrm) {
-  const normVrm = normalizeVrm(vrm);
+export function selectGarageVehicle(idOrVrm) {
+  const norm = (idOrVrm || '').trim();
   const vehicles = getGarageVehicles();
-  const target = vehicles.find((v) => normalizeVrm(v.vrm) === normVrm);
+  const target = vehicles.find((v) => v.id === norm || (v.vrm && normalizeVrm(v.vrm) === normalizeVrm(norm)) || v.summary === norm);
   if (!target) return null;
 
   saveVehicleState(
-    target.vrm,
+    target.vrm || '',
     target.sessionId,
     target.componentIds,
     target.vehicle,
@@ -375,7 +390,7 @@ export function selectManualVehicle(make, model, year, engineName, extraMeta = {
 
   const cleanMakeCode = (make || 'CAR').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
   const cleanModelCode = (model || 'MD').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase();
-  const syntheticVrm = `${cleanMakeCode}${cleanYear.slice(-2)}${cleanModelCode}`;
+  const vehicleId = `manual_${cleanMakeCode}_${cleanModelCode}_${cleanYear}`.toLowerCase();
 
   const vehicle = {
     make,
@@ -395,17 +410,18 @@ export function selectManualVehicle(make, model, year, engineName, extraMeta = {
   };
 
   const summary = `${make} • ${model} • ${vehicle.engineSize} • ${vehicle.fuel} • ${cleanYear}`;
-  const motHealth = getVehicleMotAndHealth(syntheticVrm, cleanYear);
-
-  const sessionId = extraMeta.sessionId || `manual-${syntheticVrm.toLowerCase()}`;
+  const sessionId = extraMeta.sessionId || `manual-${vehicleId}`;
   const componentIds = extraMeta.componentIds || engineObj.componentIds || ['814', '816', '817', '871', '872', '804', '819', '857', '870', '806', '820'];
-  const validSkus = extraMeta.validSkus || engineObj.validSkus || ['EBCP2DK045RP1', 'EBCP2DK036RP1', 'BABBKB6027'];
+  const validSkus = extraMeta.validSkus || engineObj.validSkus || [];
 
+  // Manual vehicle search has NO registration plate number
   const entry = {
-    vrm: syntheticVrm,
+    id: vehicleId,
+    vrm: '',
     summary,
     vehicle,
-    motHealth,
+    motHealth: null,
+    isManualSelect: true,
     sessionId,
     componentIds,
     componentId: componentIds[0] || '814',
@@ -413,7 +429,7 @@ export function selectManualVehicle(make, model, year, engineName, extraMeta = {
   };
 
   saveVehicleState(
-    entry.vrm,
+    '',
     entry.sessionId,
     entry.componentIds,
     entry.vehicle,
@@ -424,16 +440,16 @@ export function selectManualVehicle(make, model, year, engineName, extraMeta = {
   return entry;
 }
 
-export function removeFromGarage(vrm) {
-  const normVrm = normalizeVrm(vrm);
+export function removeFromGarage(idOrVrm) {
+  const norm = (idOrVrm || '').trim();
   let vehicles = getGarageVehicles();
-  vehicles = vehicles.filter((v) => normalizeVrm(v.vrm) !== normVrm);
+  vehicles = vehicles.filter((v) => v.id !== norm && (!v.vrm || normalizeVrm(v.vrm) !== normalizeVrm(norm)) && v.summary !== norm);
   saveGarageVehicles(vehicles);
 
   const activeStored = getStoredVehicle();
-  if (normalizeVrm(activeStored.vrm) === normVrm) {
+  if (activeStored.vrm === norm || activeStored.summary === norm) {
     if (vehicles.length > 0) {
-      selectGarageVehicle(vehicles[0].vrm);
+      selectGarageVehicle(vehicles[0].id || vehicles[0].vrm || vehicles[0].summary);
     } else {
       clearVehicleState();
     }
@@ -442,14 +458,21 @@ export function removeFromGarage(vrm) {
 
 export function saveVehicleState(vrm, sessionId, componentIds, vehicleData, validSkus = []) {
   const summary = formatVehicleSummary(vehicleData);
+  const isManual = Boolean(vehicleData?.isManualSelect || !vrm);
 
-  if (vrm) setCookie(COOKIE_NAMES.REG_NO, vrm);
+  if (vrm && !isManual) {
+    setCookie(COOKIE_NAMES.REG_NO, vrm);
+    window.localStorage.setItem(STORAGE_KEYS.VRM, vrm);
+  } else {
+    setCookie(COOKIE_NAMES.REG_NO, '', -1);
+    window.localStorage.removeItem(STORAGE_KEYS.VRM);
+  }
+
   if (sessionId) setCookie(COOKIE_NAMES.SESSION_ID, sessionId);
   if (summary) setCookie(COOKIE_NAMES.VEHICLE_SUMMARY, summary);
 
   const storedVehicle = { ...vehicleData, summary };
 
-  window.localStorage.setItem(STORAGE_KEYS.VRM, vrm);
   window.localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId || '');
   window.localStorage.setItem(STORAGE_KEYS.COMPONENT_IDS, JSON.stringify(componentIds || []));
   window.localStorage.setItem(STORAGE_KEYS.COMPONENT_ID, componentIds?.[0] || '');
@@ -459,12 +482,13 @@ export function saveVehicleState(vrm, sessionId, componentIds, vehicleData, vali
 
   // Auto-record into My Garage
   addToGarage({
-    vrm,
+    vrm: isManual ? '' : vrm,
     sessionId,
     componentIds,
     vehicle: storedVehicle,
     summary,
     validSkus,
+    isManualSelect: isManual,
   });
 }
 
