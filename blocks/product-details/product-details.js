@@ -7,13 +7,81 @@ import {
 } from '../../scripts/vehicle-lookup.js';
 import { isUniversalProduct } from '../../scripts/catalog-service.js';
 
-export default async function decorate(block) {
-  block.innerHTML = `
-    <div class="pdp-loading">
-      <div class="pulsing-spinner"></div>
-      <p class="loader-text">Loading product details...</p>
+function renderPdpSkeleton() {
+  return `
+    <div class="pdp-container pdp-skeleton-container" aria-busy="true" aria-label="Loading product details">
+      <!-- Breadcrumb Skeleton -->
+      <nav class="pdp-breadcrumbs">
+        <span class="skeleton-shimmer skeleton-bc-item" style="width: 50px;"></span>
+        <span class="bc-sep">/</span>
+        <span class="skeleton-shimmer skeleton-bc-item" style="width: 70px;"></span>
+        <span class="bc-sep">/</span>
+        <span class="skeleton-shimmer skeleton-bc-item active" style="width: 160px;"></span>
+      </nav>
+
+      <div class="pdp-grid">
+        <!-- Gallery Skeleton -->
+        <div class="pdp-gallery pdp-gallery-skeleton">
+          <div class="skeleton-shimmer pdp-skeleton-main-img"></div>
+          <div class="pdp-skeleton-thumbs">
+            <div class="skeleton-shimmer pdp-skeleton-thumb"></div>
+            <div class="skeleton-shimmer pdp-skeleton-thumb"></div>
+            <div class="skeleton-shimmer pdp-skeleton-thumb"></div>
+          </div>
+        </div>
+
+        <!-- Details Skeleton -->
+        <div class="pdp-details pdp-details-skeleton">
+          <div class="skeleton-shimmer pdp-skeleton-brand"></div>
+          <div class="skeleton-shimmer pdp-skeleton-title pdp-skeleton-title-1"></div>
+          <div class="skeleton-shimmer pdp-skeleton-title pdp-skeleton-title-2"></div>
+          <div class="skeleton-shimmer pdp-skeleton-meta"></div>
+
+          <!-- Fitment Box Skeleton -->
+          <div class="skeleton-shimmer pdp-skeleton-fitment-box"></div>
+
+          <!-- Price & VAT Skeleton -->
+          <div class="pdp-skeleton-pricing">
+            <div class="skeleton-shimmer pdp-skeleton-price"></div>
+            <div class="skeleton-shimmer pdp-skeleton-vat"></div>
+          </div>
+
+          <!-- Action Button Skeleton -->
+          <div class="pdp-skeleton-actions">
+            <div class="skeleton-shimmer pdp-skeleton-qty"></div>
+            <div class="skeleton-shimmer pdp-skeleton-btn"></div>
+          </div>
+
+          <!-- Feature Lines Skeleton -->
+          <div class="pdp-skeleton-features">
+            <div class="skeleton-shimmer pdp-skeleton-feature-line" style="width: 60%;"></div>
+            <div class="skeleton-shimmer pdp-skeleton-feature-line" style="width: 45%;"></div>
+            <div class="skeleton-shimmer pdp-skeleton-feature-line" style="width: 70%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Specs Skeleton -->
+      <div class="pdp-skeleton-specs">
+        <div class="pdp-skeleton-tabs">
+          <div class="skeleton-shimmer pdp-skeleton-tab active"></div>
+          <div class="skeleton-shimmer pdp-skeleton-tab"></div>
+          <div class="skeleton-shimmer pdp-skeleton-tab"></div>
+        </div>
+        <div class="pdp-skeleton-table">
+          <div class="skeleton-shimmer pdp-skeleton-row"></div>
+          <div class="skeleton-shimmer pdp-skeleton-row"></div>
+          <div class="skeleton-shimmer pdp-skeleton-row"></div>
+          <div class="skeleton-shimmer pdp-skeleton-row"></div>
+        </div>
+      </div>
     </div>
   `;
+}
+
+export default async function decorate(block) {
+  // Immediately render complete PDP skeleton layout
+  block.innerHTML = renderPdpSkeleton();
 
   const urlParams = new URLSearchParams(window.location.search);
   const sku = urlParams.get('sku');
@@ -116,7 +184,7 @@ export default async function decorate(block) {
   const fitmentBox = block.querySelector('.pdp-fitment-box');
 
   async function updateFitmentStatus() {
-    fitmentBox.innerHTML = '<div class="spinner"></div>';
+    fitmentBox.innerHTML = '<div class="skeleton-shimmer pdp-skeleton-fitment-inner"></div>';
     const categoryId = product.extraVariable?.breadcrumbs?.[0]?.id || '';
     const categoryName = product.extraVariable?.breadcrumbs?.[0]?.label || '';
 

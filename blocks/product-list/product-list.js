@@ -9,7 +9,64 @@ import { getStoredVehicle } from '../../scripts/vehicle-lookup.js';
 import { getConfig } from '../../scripts/config.js';
 import { showPageLoader, hidePageLoader } from '../../scripts/scripts.js';
 
+function getSidebarSkeletonsHtml() {
+  return `
+    <div class="skeleton-facets" aria-busy="true" aria-label="Loading filters">
+      ${[1, 2, 3].map(() => `
+        <div class="skeleton-facet-group">
+          <div class="skeleton-shimmer skeleton-facet-header"></div>
+          <div class="skeleton-facet-items">
+            <div class="skeleton-facet-item">
+              <span class="skeleton-shimmer skeleton-checkbox-box"></span>
+              <span class="skeleton-shimmer skeleton-facet-name" style="width: 65%;"></span>
+              <span class="skeleton-shimmer skeleton-facet-count-badge"></span>
+            </div>
+            <div class="skeleton-facet-item">
+              <span class="skeleton-shimmer skeleton-checkbox-box"></span>
+              <span class="skeleton-shimmer skeleton-facet-name" style="width: 50%;"></span>
+              <span class="skeleton-shimmer skeleton-facet-count-badge"></span>
+            </div>
+            <div class="skeleton-facet-item">
+              <span class="skeleton-shimmer skeleton-checkbox-box"></span>
+              <span class="skeleton-shimmer skeleton-facet-name" style="width: 75%;"></span>
+              <span class="skeleton-shimmer skeleton-facet-count-badge"></span>
+            </div>
+            <div class="skeleton-facet-item">
+              <span class="skeleton-shimmer skeleton-checkbox-box"></span>
+              <span class="skeleton-shimmer skeleton-facet-name" style="width: 40%;"></span>
+              <span class="skeleton-shimmer skeleton-facet-count-badge"></span>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function getProductGridSkeletonsHtml(count = 12) {
+  return Array.from({ length: Math.min(count, 12) }).map(() => `
+    <div class="skeleton-product-card" aria-busy="true" aria-label="Loading product card">
+      <div class="skeleton-shimmer skeleton-media"></div>
+      <div class="skeleton-info">
+        <div class="skeleton-shimmer skeleton-brand-pill"></div>
+        <div class="skeleton-shimmer skeleton-line skeleton-title-line-1"></div>
+        <div class="skeleton-shimmer skeleton-line skeleton-title-line-2"></div>
+        <div class="skeleton-shimmer skeleton-fitment-badge"></div>
+        <div class="skeleton-shimmer skeleton-stock-line"></div>
+        <div class="skeleton-bottom">
+          <div class="skeleton-shimmer skeleton-price-pill"></div>
+          <div class="skeleton-shimmer skeleton-button-pill"></div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
 export default async function decorate(block) {
+  const appConfig = getConfig();
+  const urlParams = new URLSearchParams(window.location.search);
+  const pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
+
   block.innerHTML = `
     <div class="plp-layout">
       <!-- Sidebar Filters -->
@@ -24,10 +81,7 @@ export default async function decorate(block) {
           </button>
         </div>
         <div class="plp-facets-container">
-          <div class="facets-loading">
-            <div class="pulsing-spinner" style="width:32px; height:32px;"></div>
-            <p>Loading filters...</p>
-          </div>
+          ${getSidebarSkeletonsHtml()}
         </div>
       </aside>
 
@@ -58,7 +112,7 @@ export default async function decorate(block) {
         <!-- Toolbar: Count, Search & Sort -->
         <div class="plp-toolbar">
           <div class="plp-results-count">
-            <span class="count-skeleton">Loading catalog...</span>
+            <span class="skeleton-shimmer skeleton-line skeleton-count-shimmer" style="width: 220px; height: 18px; display: inline-block;"></span>
           </div>
           <div class="plp-toolbar-controls">
             <div class="plp-control-group">
@@ -83,7 +137,7 @@ export default async function decorate(block) {
 
         <!-- Product Grid -->
         <div class="plp-grid">
-          <!-- Skeletons rendered by default -->
+          ${getProductGridSkeletonsHtml(pageSize)}
         </div>
 
         <!-- Pagination -->
@@ -129,23 +183,7 @@ export default async function decorate(block) {
   }
 
   function renderSkeletons(count = pageSize) {
-    const cardSkeletons = Array.from({ length: Math.min(count, 15) }).map(() => `
-      <div class="skeleton-product-card">
-        <div class="skeleton-shimmer skeleton-media"></div>
-        <div class="skeleton-info">
-          <div class="skeleton-shimmer skeleton-tag"></div>
-          <div class="skeleton-shimmer skeleton-line" style="width: 85%;"></div>
-          <div class="skeleton-shimmer skeleton-line" style="width: 60%;"></div>
-          <div class="skeleton-shimmer skeleton-line-sm" style="width: 40%; margin-top: 0.5rem;"></div>
-          <div class="skeleton-bottom">
-            <div class="skeleton-shimmer skeleton-price-pill"></div>
-            <div class="skeleton-shimmer skeleton-button-pill"></div>
-          </div>
-        </div>
-      </div>
-    `).join('');
-
-    grid.innerHTML = cardSkeletons;
+    grid.innerHTML = getProductGridSkeletonsHtml(count);
   }
 
   function updateViewModeTabs(result) {
@@ -617,6 +655,10 @@ export default async function decorate(block) {
     grid.classList.add('loading');
     renderSkeletons(pageSize);
     renderFitmentAlert();
+    countEl.innerHTML = '<span class="skeleton-shimmer skeleton-line skeleton-count-shimmer" style="width: 240px; height: 18px; display: inline-block;"></span>';
+    if (!facetsContainer.querySelector('.facet-group')) {
+      facetsContainer.innerHTML = getSidebarSkeletonsHtml();
+    }
 
     try {
       const result = await fetchCatalogProducts({

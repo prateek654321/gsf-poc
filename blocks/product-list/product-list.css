@@ -708,21 +708,94 @@
   transform: translateX(3px);
 }
 
-/* Skeleton Loading Cards */
+/* Unified Skeleton Shimmer Animation */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Sidebar Filter Skeletons */
+.skeleton-facets {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  pointer-events: none;
+}
+
+.skeleton-facet-group {
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 1rem;
+}
+
+.skeleton-facet-group:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.skeleton-facet-header {
+  width: 55%;
+  height: 20px;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-facet-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.skeleton-facet-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.skeleton-checkbox-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.skeleton-facet-name {
+  height: 14px;
+  border-radius: 3px;
+  flex-grow: 1;
+}
+
+.skeleton-facet-count-badge {
+  width: 26px;
+  height: 16px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+/* Product Card Skeletons */
 .skeleton-product-card {
   background-color: var(--color-white);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--color-gray-200);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 420px;
+  height: 440px;
+  pointer-events: none;
+  user-select: none;
 }
 
 .skeleton-media {
   height: 200px;
-  background-color: #f1f5f9;
+  width: 100%;
+  border-radius: 0;
 }
 
 .skeleton-info {
@@ -733,20 +806,35 @@
   flex: 1;
 }
 
-.skeleton-tag {
+.skeleton-brand-pill {
   height: 14px;
-  width: 90px;
-  border-radius: var(--radius-xs);
+  width: 80px;
+  border-radius: 4px;
 }
 
-.skeleton-line {
+.skeleton-title-line-1 {
   height: 18px;
-  border-radius: var(--radius-xs);
+  width: 90%;
+  border-radius: 4px;
 }
 
-.skeleton-line-sm {
-  height: 12px;
-  border-radius: var(--radius-xs);
+.skeleton-title-line-2 {
+  height: 18px;
+  width: 65%;
+  border-radius: 4px;
+}
+
+.skeleton-fitment-badge {
+  height: 24px;
+  width: 130px;
+  border-radius: 9999px;
+  margin: 0.25rem 0;
+}
+
+.skeleton-stock-line {
+  height: 14px;
+  width: 140px;
+  border-radius: 4px;
 }
 
 .skeleton-bottom {
@@ -760,25 +848,18 @@
 
 .skeleton-price-pill {
   width: 80px;
-  height: 28px;
-  border-radius: var(--radius-xs);
+  height: 30px;
+  border-radius: 6px;
 }
 
 .skeleton-button-pill {
-  width: 95px;
-  height: 36px;
-  border-radius: var(--radius-sm);
+  width: 105px;
+  height: 38px;
+  border-radius: 6px;
 }
 
-.skeleton-shimmer {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-  background-size: 200% 100%;
-  animation: skeletonShimmer 1.5s infinite;
-}
-
-@keyframes skeletonShimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+.skeleton-count-shimmer {
+  border-radius: 4px;
 }
 
 /* Pagination Bar */
