@@ -14,17 +14,57 @@ import {
 export default async function decorate(block) {
   block.innerHTML = '';
 
-  // 1. Main Brand Row
+  // 1. Official POC Architecture Banner
+  const pocBar = document.createElement('div');
+  pocBar.className = 'header-poc-bar';
+  pocBar.innerHTML = `
+    <div class="header-poc-inner">
+      <div class="poc-badge-label">
+        <span class="poc-pulse-dot"></span>
+        <strong class="poc-title">AEM EDGE DELIVERY SERVICES (EDS) POC</strong>
+        <span class="poc-sep">•</span>
+        <span class="poc-desc">Headless Adobe Commerce & Live Vehicle Fitment Engine</span>
+      </div>
+      <div class="poc-metrics-strip">
+        <span class="metric-pill">⚡ 100 PageSpeed</span>
+        <span class="metric-pill">⏱️ &lt;100ms TTFB</span>
+        <span class="metric-pill">🚗 Live DVLA / Magento Fitment</span>
+      </div>
+    </div>
+  `;
+
+  // 2. GSF Customer Benefits Strip (matching gsfcarparts.com)
+  const promoStrip = document.createElement('div');
+  promoStrip.className = 'header-promo-strip';
+  promoStrip.innerHTML = `
+    <div class="header-promo-inner">
+      <span class="promo-item">🚚 <strong>Free UK Delivery</strong> on orders over £25*</span>
+      <span class="promo-sep">•</span>
+      <span class="promo-item">⏱️ <strong>Click & Collect</strong> in 30 Mins (180+ Branches)</span>
+      <span class="promo-sep">•</span>
+      <span class="promo-item">🔄 <strong>60 Day Returns</strong> Guarantee</span>
+      <span class="promo-sep">•</span>
+      <span class="promo-item">⭐ <strong>Rated 4.5/5</strong> on Trustpilot</span>
+    </div>
+  `;
+
+  // 3. Main Brand Row
   const brandBar = document.createElement('div');
   brandBar.className = 'header-brand-bar';
 
+  // Authentic GSF Red Logo Block + Rebrand Tagline + POC tag
   const logo = document.createElement('a');
   logo.href = '/';
   logo.className = 'header-logo';
+  logo.title = 'GSF Car Parts — Home';
   logo.innerHTML = `
     <div class="logo-box">
-      <span class="logo-gsf">GSF</span>
-      <span class="logo-sub">CAR PARTS</span>
+      <div class="logo-badge-red">GSF</div>
+      <div class="logo-text-block">
+        <span class="logo-sub">CAR PARTS</span>
+        <span class="logo-strapline">DO YOURSELF PROUD</span>
+      </div>
+      <span class="logo-poc-pill">POC</span>
     </div>
   `;
 
@@ -46,6 +86,19 @@ export default async function decorate(block) {
       window.location.href = `/plp.html?q=${encodeURIComponent(query)}`;
     }
   });
+
+  // Store Finder / Branches Link
+  const branchLink = document.createElement('a');
+  branchLink.href = '#';
+  branchLink.className = 'header-branch-link';
+  branchLink.title = 'Find a GSF Car Parts branch near you';
+  branchLink.innerHTML = `
+    <span class="branch-icon">📍</span>
+    <div class="branch-text-wrap">
+      <span class="branch-title">Find Branch</span>
+      <span class="branch-sub">180+ Stores</span>
+    </div>
+  `;
 
   // "My Garage" Multi-Vehicle Switcher Widget
   const garageWidget = document.createElement('div');
@@ -246,26 +299,26 @@ export default async function decorate(block) {
     if (dd) dd.style.display = 'none';
   });
 
+  // User Actions (Sign in, Basket)
   const actions = document.createElement('div');
   actions.className = 'header-actions';
   actions.innerHTML = `
-    <a href="/categories.html" class="header-action-item">
-      <span class="action-icon">📂</span>
-      <span class="action-label">All Categories</span>
+    <a href="#" class="header-action-item header-account-link" title="My Account">
+      <span class="action-icon">👤</span>
+      <span class="action-label">Sign In</span>
     </a>
-    <a href="/plp.html" class="header-action-item">
-      <span class="action-icon">📦</span>
-      <span class="action-label">All Parts</span>
-    </a>
-    <div class="header-basket header-action-item">
+    <div class="header-basket header-action-item" title="View Shopping Basket">
       <span class="action-icon">🛒</span>
-      <span class="action-label">Basket</span>
+      <div class="basket-text-wrap">
+        <span class="basket-title">Basket</span>
+        <span class="basket-amount">£0.00</span>
+      </div>
     </div>
   `;
 
-  brandBar.append(logo, searchForm, garageWidget, actions);
+  brandBar.append(logo, searchForm, branchLink, garageWidget, actions);
 
-  // 2. Navigation Bar (Strictly no horizontal scroll, fixed clean layout)
+  // 4. Navigation Bar (GSF Corporate Navy #002F6E)
   const navBar = document.createElement('nav');
   navBar.className = 'header-nav-bar';
 
@@ -278,18 +331,16 @@ export default async function decorate(block) {
   navContainer.append(navList);
   navBar.append(navContainer);
 
-  block.append(brandBar, navBar);
+  block.append(pocBar, promoStrip, brandBar, navBar);
 
-  // Fetch Categories and render limited primary items + "All Categories" link
+  // Fetch Categories from Magento API
   try {
     const rawCategories = await fetchCategories();
 
-    // In GSF, "Car Parts" (id: 5275) has children like "Service Parts", "Braking", "Steering & Suspension", etc.
-    // If the first item is "Car Parts" with many children, we can promote its main children to the top navbar!
     const carParts = rawCategories.find((c) => c.name.toLowerCase().includes('car parts')) || rawCategories[0];
     const topItems = carParts?.children && carParts.children.length > 0
-      ? carParts.children.slice(0, 6)
-      : rawCategories.slice(0, 6);
+      ? carParts.children.slice(0, 7)
+      : rawCategories.slice(0, 7);
 
     navList.innerHTML = '';
 
@@ -329,6 +380,16 @@ export default async function decorate(block) {
       navList.append(item);
     });
 
+    // Deals & Clearance Item (Gold Highlight)
+    const dealsItem = document.createElement('li');
+    dealsItem.className = 'header-nav-item deals-item';
+    dealsItem.innerHTML = `
+      <a href="/plp.html?category_id=5461&category_name=Braking" class="header-nav-link deals-link">
+        <span>🔥 Deals & Offers</span>
+      </a>
+    `;
+    navList.append(dealsItem);
+
     // Final menu item: "All Categories"
     const allCatItem = document.createElement('li');
     allCatItem.className = 'header-nav-item all-categories-item';
@@ -346,6 +407,7 @@ export default async function decorate(block) {
       <li class="header-nav-item"><a href="/plp.html?category_id=5461" class="header-nav-link">Braking</a></li>
       <li class="header-nav-item"><a href="/plp.html?category_id=5590" class="header-nav-link">Steering & Suspension</a></li>
       <li class="header-nav-item"><a href="/plp.html?category_id=5707" class="header-nav-link">Engine Parts</a></li>
+      <li class="header-nav-item deals-item"><a href="/plp.html?category_id=5461" class="header-nav-link deals-link">🔥 Deals & Offers</a></li>
       <li class="header-nav-item all-categories-item"><a href="/categories.html" class="header-nav-link all-categories-link">☰ All Categories</a></li>
     `;
   }

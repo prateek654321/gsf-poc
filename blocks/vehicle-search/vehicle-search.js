@@ -519,9 +519,21 @@ export default async function decorate(block) {
   const headingBox = document.createElement('div');
   headingBox.className = 'vehicle-search-header';
   headingBox.innerHTML = `
-    <span class="vehicle-search-tag">VEHICLE COMPATIBILITY LOOKUP</span>
-    <h2 class="vehicle-search-heading">Find Guaranteed Fit Parts For Your Car</h2>
-    <p class="vehicle-search-description">Search by UK registration plate or select by make and model to filter 100% compatible parts.</p>
+    <div class="hero-strapline-row">
+      <span class="vehicle-search-tag">🇬🇧 UK'S LEADING CAR PARTS SPECIALIST</span>
+      <span class="hero-poc-flag">AEM EDS POC</span>
+    </div>
+    <h1 class="vehicle-search-heading">DO YOURSELF PROUD</h1>
+    <p class="vehicle-search-description">Over 100,000 quality car parts at unbeatable trade prices. Enter your registration for 100% guaranteed vehicle fitment.</p>
+    <div class="hero-badges-row">
+      <div class="hero-badge-trustpilot">
+        <span class="stars">★★★★★</span>
+        <strong>4.5/5</strong> Rated Excellent (80k+ Reviews)
+      </div>
+      <div class="hero-badge-promo">
+        <span>🏷️ Promo Code: <strong>GSF22</strong></span>
+      </div>
+    </div>
   `;
 
   // Dual-tab switcher: VRM vs Manual Select

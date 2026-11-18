@@ -1,12 +1,14 @@
 :root {
-  /* GSF Car Parts Brand Palette */
-  --color-brand-primary: #004b97;
-  --color-brand-primary-dark: #003366;
-  --color-brand-primary-light: #0066cc;
-  --color-brand-accent: #ffd100;
-  --color-brand-accent-hover: #e6bc00;
+  /* GSF Car Parts Official Brand Palette */
+  --color-brand-primary: #002f6e;
+  --color-brand-primary-dark: #001f4d;
+  --color-brand-primary-light: #004b97;
+  --color-brand-red: #ed1c24;
+  --color-brand-red-hover: #d71920;
+  --color-brand-accent: #ffcd26;
+  --color-brand-accent-hover: #f5be00;
   --color-brand-dark: #07162c;
-  --color-brand-surface: #0e2a4a;
+  --color-brand-surface: #0a2540;
 
   /* UK Registration Plate Colors */
   --color-plate-yellow: #ffd100;
@@ -184,28 +186,29 @@ button.btn {
 
 .button-primary,
 button.btn-primary {
-  background-color: var(--color-brand-primary);
+  background-color: var(--color-brand-red);
   color: var(--color-white);
-  box-shadow: 0 2px 4px rgba(0, 75, 151, 0.2);
+  box-shadow: 0 2px 6px rgba(237, 28, 36, 0.3);
 }
 
 .button-primary:hover,
 button.btn-primary:hover {
-  background-color: var(--color-brand-primary-dark);
-  box-shadow: 0 4px 8px rgba(0, 75, 151, 0.3);
+  background-color: var(--color-brand-red-hover);
+  box-shadow: 0 4px 10px rgba(237, 28, 36, 0.45);
   transform: translateY(-1px);
 }
 
 .button-accent,
 button.btn-accent {
-  background-color: var(--color-brand-accent);
-  color: var(--color-gray-900);
-  box-shadow: 0 2px 6px rgba(255, 209, 0, 0.35);
+  background-color: var(--color-brand-red);
+  color: var(--color-white);
+  box-shadow: 0 2px 6px rgba(237, 28, 36, 0.35);
 }
 
 .button-accent:hover,
 button.btn-accent:hover {
-  background-color: var(--color-brand-accent-hover);
+  background-color: var(--color-brand-red-hover);
+  box-shadow: 0 4px 10px rgba(237, 28, 36, 0.45);
   transform: translateY(-1px);
 }
 

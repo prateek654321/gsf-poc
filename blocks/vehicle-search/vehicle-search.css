@@ -8,7 +8,7 @@
   gap: 1.25rem;
   padding: 2rem 2.25rem;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #07162c 0%, #002b5c 50%, #004b97 100%);
+  background: linear-gradient(135deg, #07162c 0%, #001f4d 50%, #002f6e 100%);
   color: var(--color-white);
   box-shadow: 0 10px 25px -5px rgba(0, 35, 75, 0.35), 0 8px 10px -6px rgba(0, 35, 75, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -30,7 +30,14 @@
 .vehicle-search .vehicle-search-header {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 0.5rem;
+}
+
+.vehicle-search .hero-strapline-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .vehicle-search .vehicle-search-tag {
@@ -44,19 +51,68 @@
   text-transform: uppercase;
 }
 
+.vehicle-search .hero-poc-flag {
+  background: rgba(237, 28, 36, 0.2);
+  color: #ff8a8a;
+  border: 1px solid rgba(237, 28, 36, 0.4);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
 .vehicle-search .vehicle-search-heading {
   margin: 0;
-  font-size: 1.625rem;
-  font-weight: 800;
+  font-size: 2.25rem;
+  font-weight: 900;
   color: var(--color-white);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 .vehicle-search .vehicle-search-description {
   margin: 0;
   color: #d0e1f9;
+  font-size: 1rem;
+  max-width: 650px;
+  line-height: 1.4;
+}
+
+.vehicle-search .hero-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.vehicle-search .hero-badge-trustpilot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.vehicle-search .hero-badge-trustpilot .stars {
+  color: #00b67a;
+  letter-spacing: 2px;
   font-size: 0.9375rem;
-  max-width: 600px;
+}
+
+.vehicle-search .hero-badge-promo {
+  font-size: 0.8125rem;
+  color: #ffcd26;
+  background: rgba(255, 205, 38, 0.12);
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 205, 38, 0.3);
+  font-weight: 600;
 }
 
 .vehicle-search .vehicle-search-form {
@@ -135,8 +191,8 @@
   padding: 0 1.75rem;
   border: none;
   border-radius: 7px;
-  background: linear-gradient(180deg, #ffd814 0%, #ffd100 60%, #e6bc00 100%);
-  color: #111111;
+  background-color: var(--color-brand-red);
+  color: #ffffff;
   font-weight: 800;
   font-size: 1rem;
   letter-spacing: 0.5px;
@@ -145,14 +201,14 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(237, 28, 36, 0.4);
   transition: all 0.15s ease;
 }
 
 .vehicle-search .vehicle-search-button:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ffe14c 0%, #ffd814 60%, #f5c400 100%);
+  background-color: var(--color-brand-red-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 16px rgba(237, 28, 36, 0.55);
 }
 
 .vehicle-search .vehicle-search-button:disabled {
