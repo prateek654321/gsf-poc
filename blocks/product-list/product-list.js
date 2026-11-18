@@ -329,9 +329,14 @@ export default async function decorate(block) {
 
     activeKeys.forEach((code) => {
       activeFilters[code].forEach((val) => {
-        const displayVal = (code === 'quality' || code === 'brand')
-          ? getBrandNameFromQuality(val, val)
-          : val;
+        let displayVal = val;
+        if (code === 'quality' || code === 'brand') {
+          displayVal = `Brand: ${getBrandNameFromQuality(val, val)}`;
+        } else if (code === 'category_filter' || code === 'category') {
+          displayVal = `Category: ${val}`;
+        } else if (code === 'axle') {
+          displayVal = `Placement: ${val}`;
+        }
         pillsHtml += `
           <button type="button" class="filter-pill" data-code="${code}" data-val="${val}">
             <span>${displayVal}</span>
@@ -465,16 +470,15 @@ export default async function decorate(block) {
   function renderFacets(aggregations) {
     facetsContainer.innerHTML = '';
 
-    // Filter to basic filter types: Brand (attribute code 'quality'), Axle / Placement, and Price.
-    // Strictly removes Category, Product Group, and all obscure technical filters.
+    // Filter to clean automotive filter types: Category, Placement / Axle, Brand (attribute code 'quality'), and Price.
+    // Removes obscure technical attributes while maintaining full 3-level Category & Brand fitment.
     // Shows filters only if at least 2 distinct options are eligible.
-    const allowedCodes = ['quality', 'brand', 'price', 'axle'];
+    const allowedCodes = ['category_filter', 'category', 'quality', 'brand', 'price', 'axle'];
     const validAggs = (aggregations || []).filter((agg) => {
       const code = (agg.attribute_code || '').toLowerCase();
       const label = (agg.label || '').toLowerCase();
-      if (code.includes('category') || label.includes('category')) return false;
       if (code.includes('product_group') || label.includes('product group')) return false;
-      if (!allowedCodes.includes(code) && !label.includes('brand') && !label.includes('quality') && !label.includes('price') && !label.includes('axle')) return false;
+      if (!allowedCodes.includes(code) && !label.includes('category') && !label.includes('brand') && !label.includes('quality') && !label.includes('price') && !label.includes('axle')) return false;
       return agg.options && agg.options.length >= 2;
     });
 

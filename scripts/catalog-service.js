@@ -283,15 +283,69 @@ export function getAxlePlacement(item) {
 }
 
 /**
- * Builds clean basic aggregations (Brand, Axle/Placement and Price only).
- * Uses 'quality' as the attribute_code for Brand filtering as per Magento specification.
- * Shows Brand filter ONLY if at least 2 distinct brands exist in the available items.
+ * Resolves a clean, standardized Category / Part Type name for any product
+ * @param {object} item
+ * @returns {string}
+ */
+export function getItemCategoryName(item) {
+  if (!item) return '';
+  if (item.category_name) return item.category_name;
+
+  // Check breadcrumbs
+  const breadcrumbs = item.extraVariable?.breadcrumbs;
+  if (breadcrumbs && breadcrumbs.length > 0) {
+    const leaf = breadcrumbs[breadcrumbs.length - 1];
+    if (leaf && leaf.label && !leaf.label.toLowerCase().includes('car parts')) {
+      return leaf.label;
+    }
+  }
+
+  // Infer from product title & SKU keywords
+  const name = (item.name || '').toLowerCase();
+  if (name.includes('pad')) return 'Brake Pads';
+  if (name.includes('disc') || name.includes('rotor')) return 'Brake Discs';
+  if (name.includes('caliper')) return 'Brake Calipers';
+  if (name.includes('sensor')) return 'Brake Sensors';
+  if (name.includes('shoe')) return 'Brake Shoes';
+  if (name.includes('oil filter')) return 'Oil Filters';
+  if (name.includes('air filter')) return 'Air Filters';
+  if (name.includes('cabin filter')) return 'Cabin Filters';
+  if (name.includes('fuel filter')) return 'Fuel Filters';
+  if (name.includes('filter')) return 'Filters';
+  if (name.includes('battery')) return 'Car Batteries';
+  if (name.includes('wiper')) return 'Wiper Blades';
+  if (name.includes('spark')) return 'Spark Plugs';
+  if (name.includes('glow')) return 'Glow Plugs';
+  if (name.includes('engine oil') || (name.includes('oil') && !name.includes('filter'))) return 'Engine Oils';
+
+  return '';
+}
+
+/**
+ * Builds clean basic aggregations (Category, Axle/Placement, and Brand).
+ * Uses 'category_filter' for Category, 'quality' for Brand, and 'axle' for Placement.
+ * Shows filters ONLY if at least 2 distinct options exist in the candidate items.
  */
 export function buildBasicAggregations(items) {
+  const categoryMap = new Map();
   const qualityMap = new Map();
   const axleMap = new Map();
 
   items.forEach((item) => {
+    // 1. Category facet
+    const catName = getItemCategoryName(item);
+    if (catName) {
+      if (!categoryMap.has(catName)) {
+        categoryMap.set(catName, {
+          label: catName,
+          value: catName,
+          count: 0,
+        });
+      }
+      categoryMap.get(catName).count += 1;
+    }
+
+    // 2. Brand facet
     const brandName = getBrandName(item);
     if (brandName) {
       const qualityCode = String(item.quality || '').trim() || getQualityCodeForBrand(brandName) || brandName;
@@ -306,7 +360,7 @@ export function buildBasicAggregations(items) {
       entry.count += 1;
     }
 
-    // Axle Placement
+    // 3. Axle Placement
     const axle = getAxlePlacement(item);
     if (axle && axle !== 'All / Universal') {
       if (!axleMap.has(axle)) {
@@ -320,11 +374,20 @@ export function buildBasicAggregations(items) {
     }
   });
 
-  const eligibleOptions = Array.from(qualityMap.values())
+  const aggregations = [];
+
+  // Show Category filter if at least 2 distinct categories exist
+  const eligibleCategories = Array.from(categoryMap.values())
     .filter((entry) => entry.count > 0)
     .sort((a, b) => b.count - a.count);
 
-  const aggregations = [];
+  if (eligibleCategories.length >= 2) {
+    aggregations.push({
+      attribute_code: 'category_filter',
+      label: 'Category',
+      options: eligibleCategories,
+    });
+  }
 
   // Show Axle filter if multiple placements exist
   const eligibleAxles = Array.from(axleMap.values()).filter((e) => e.count > 0);
@@ -337,6 +400,10 @@ export function buildBasicAggregations(items) {
   }
 
   // Show Brand filter with attribute_code 'quality' ONLY if at least 2 distinct brands are eligible
+  const eligibleOptions = Array.from(qualityMap.values())
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => b.count - a.count);
+
   if (eligibleOptions.length >= 2) {
     aggregations.push({
       attribute_code: 'quality',
@@ -463,6 +530,11 @@ export async function fetchCatalogProducts({
       delete normalizedFilters.brand;
     }
 
+    // Client-side category filter (e.g. Brake Pads vs Brake Discs)
+    const activeCatFilter = normalizedFilters.category_filter || normalizedFilters.category;
+    delete normalizedFilters.category_filter;
+    delete normalizedFilters.category;
+
     // Client-side axle filter (Front Axle vs Rear Axle)
     const activeAxleFilter = normalizedFilters.axle;
     delete normalizedFilters.axle;
@@ -508,7 +580,12 @@ export async function fetchCatalogProducts({
           });
 
           if (res?.items && res.items.length > 0) {
-            rawItems = [...rawItems, ...res.items];
+            const tagged = res.items.map((it) => ({
+              ...it,
+              category_id: String(target.catId),
+              category_name: target.name,
+            }));
+            rawItems = [...rawItems, ...tagged];
             totalCount += (res.total_count || res.items.length);
           }
         } catch (err) {
@@ -581,8 +658,17 @@ export async function fetchCatalogProducts({
       }
     }
 
-    // 1. Filter by active filters (Brand and Axle)
+    // 1. Filter by active filters (Category, Placement/Axle, and Brand)
     let filteredItems = fitmentPool.rawItems;
+
+    if (activeCatFilter) {
+      const catArray = (Array.isArray(activeCatFilter) ? activeCatFilter : [activeCatFilter])
+        .map((c) => String(c).toLowerCase().trim());
+      filteredItems = filteredItems.filter((item) => {
+        const itemCat = getItemCategoryName(item).toLowerCase().trim();
+        return catArray.some((c) => itemCat === c || itemCat.includes(c) || c.includes(itemCat));
+      });
+    }
 
     if (activeAxleFilter) {
       const axleArray = Array.isArray(activeAxleFilter) ? activeAxleFilter : [activeAxleFilter];
@@ -618,7 +704,8 @@ export async function fetchCatalogProducts({
     // 3. Build basic aggregations based on candidate pool
     const aggregations = buildBasicAggregations(fitmentPool.rawItems);
 
-    const totalFittedCount = activeAxleFilter ? sortedItems.length : fitmentPool.totalCount;
+    const isFiltered = Boolean(activeAxleFilter || activeCatFilter || (selectedQualities && selectedQualities.length > 0));
+    const totalFittedCount = isFiltered ? sortedItems.length : fitmentPool.totalCount;
     const totalPages = Math.max(1, Math.ceil(totalFittedCount / targetPageSize));
     const safePage = Math.min(currentPage, totalPages);
 
@@ -760,6 +847,18 @@ export async function fetchCatalogProducts({
     });
 
     let items = candidateRes.items || [];
+
+    // Filter by Category if selected
+    const activeCatFilter = filters.category_filter || filters.category;
+    if (activeCatFilter) {
+      const catArray = (Array.isArray(activeCatFilter) ? activeCatFilter : [activeCatFilter])
+        .map((c) => String(c).toLowerCase().trim());
+      items = items.filter((item) => {
+        const itemCat = getItemCategoryName(item).toLowerCase().trim();
+        return catArray.some((c) => itemCat === c || itemCat.includes(c) || c.includes(itemCat));
+      });
+    }
+
     // Filter by quality attribute code for Brand if selected
     const selectedQualities = filters.quality || filters.brand || filters.manufacturer;
     if (selectedQualities && selectedQualities.length > 0) {
@@ -811,6 +910,10 @@ export async function fetchCatalogProducts({
 
   // Standard GraphQL fetch for other sorts: ensure 'quality' attribute code is passed to Magento GraphQL
   const normalizedFilters = { ...filters };
+  const activeCatFilterAll = normalizedFilters.category_filter || normalizedFilters.category;
+  delete normalizedFilters.category_filter;
+  delete normalizedFilters.category;
+
   if (normalizedFilters.brand && !normalizedFilters.quality) {
     const brands = Array.isArray(normalizedFilters.brand) ? normalizedFilters.brand : [normalizedFilters.brand];
     normalizedFilters.quality = brands.map((b) => getQualityCodeForBrand(b) || b);
@@ -827,6 +930,14 @@ export async function fetchCatalogProducts({
   });
 
   let items = result.items || [];
+  if (activeCatFilterAll) {
+    const catArray = (Array.isArray(activeCatFilterAll) ? activeCatFilterAll : [activeCatFilterAll])
+      .map((c) => String(c).toLowerCase().trim());
+    items = items.filter((item) => {
+      const itemCat = getItemCategoryName(item).toLowerCase().trim();
+      return catArray.some((c) => itemCat === c || itemCat.includes(c) || c.includes(itemCat));
+    });
+  }
   const total = result.total_count || 0;
   const totalPages = Math.max(1, Math.ceil(total / targetPageSize));
 
