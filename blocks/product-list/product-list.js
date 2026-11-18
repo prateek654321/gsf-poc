@@ -5,7 +5,8 @@ import {
   getBrandNameFromQuality,
   isUniversalProduct,
 } from '../../scripts/catalog-service.js';
-import { getStoredVehicle } from '../../scripts/vehicle-lookup.js';
+import { getStoredVehicle, lookupVrmAndFetchSkus } from '../../scripts/vehicle-lookup.js';
+import { getCategoryNavInfo } from '../../scripts/category-component-map.js';
 import { getConfig } from '../../scripts/config.js';
 import { showPageLoader, hidePageLoader } from '../../scripts/scripts.js';
 
@@ -95,6 +96,12 @@ export default async function decorate(block) {
 
       <!-- Main Results Column -->
       <main class="plp-main">
+        <!-- 3-Level Category Breadcrumbs -->
+        <nav class="plp-category-breadcrumbs" aria-label="Category Breadcrumbs"></nav>
+
+        <!-- Subcategory Quick Pills Bar -->
+        <div class="plp-subcategories-bar" style="display:none;"></div>
+
         <!-- Fitment Banner -->
         <div class="plp-fitment-alert" style="display:none;"></div>
 
@@ -215,6 +222,44 @@ export default async function decorate(block) {
       countAllEl.textContent = (result?.total_count || 0).toLocaleString();
       tabFitted.title = 'Enter your UK registration to filter parts';
       tabAll.title = 'Showing all products in catalog';
+    }
+  }
+
+  function renderCategoryNavigation() {
+    const navInfo = getCategoryNavInfo(categoryId, categoryName);
+    const breadcrumbsEl = block.querySelector('.plp-category-breadcrumbs');
+    const subcatsEl = block.querySelector('.plp-subcategories-bar');
+    const stored = getStoredVehicle();
+    const vrmQuery = stored.vrm ? `&vrm=${encodeURIComponent(stored.vrm)}` : '';
+
+    if (breadcrumbsEl && navInfo?.breadcrumbs?.length > 0) {
+      breadcrumbsEl.innerHTML = navInfo.breadcrumbs.map((b, idx) => {
+        const isLast = idx === navInfo.breadcrumbs.length - 1;
+        if (isLast) {
+          return `<span class="bc-current" aria-current="page">${b.name}</span>`;
+        }
+        return `<a href="${b.href}${vrmQuery}" class="bc-link">${b.name}</a><span class="bc-sep">/</span>`;
+      }).join(' ');
+    }
+
+    const availablePills = navInfo?.quickLeaves?.length > 0 ? navInfo.quickLeaves : (navInfo?.subcategories || []);
+    if (subcatsEl && availablePills.length > 0) {
+      subcatsEl.style.display = 'flex';
+      subcatsEl.innerHTML = `
+        <span class="subcat-pills-label">Explore Subcategories:</span>
+        <div class="subcat-pills-list">
+          ${availablePills.map((sub) => {
+            const isActive = String(sub.id) === String(categoryId) || sub.active;
+            return `
+              <a href="${sub.href}${vrmQuery}" class="subcat-pill ${isActive ? 'active' : ''}">
+                <span>${sub.name}</span>
+              </a>
+            `;
+          }).join('')}
+        </div>
+      `;
+    } else if (subcatsEl) {
+      subcatsEl.style.display = 'none';
     }
   }
 
@@ -659,6 +704,7 @@ export default async function decorate(block) {
     showPageLoader();
     grid.classList.add('loading');
     renderSkeletons(pageSize);
+    renderCategoryNavigation();
     renderFitmentAlert();
     countEl.innerHTML = '<span class="skeleton-shimmer skeleton-line skeleton-count-shimmer" style="width: 240px; height: 18px; display: inline-block;"></span>';
     if (facetsContainer && !facetsContainer.querySelector('.facet-group')) {

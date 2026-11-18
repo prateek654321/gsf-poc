@@ -355,25 +355,61 @@ export default async function decorate(block) {
 
       item.append(link);
 
-      // Subcategory dropdown
+      // Multi-level Mega-Menu Dropdown (Level 2 Subcategories + Level 3 Leaf Products)
       if (cat.children && cat.children.length > 0) {
         item.classList.add('has-dropdown');
         const dropdown = document.createElement('div');
-        dropdown.className = 'header-nav-dropdown';
+        dropdown.className = 'header-nav-dropdown header-mega-menu';
 
-        const subList = document.createElement('ul');
-        subList.className = 'header-nav-sublist';
+        const megaGrid = document.createElement('div');
+        megaGrid.className = 'mega-menu-grid';
 
-        cat.children.slice(0, 8).forEach((sub) => {
-          const subItem = document.createElement('li');
+        cat.children.slice(0, 5).forEach((sub) => {
+          const col = document.createElement('div');
+          col.className = 'mega-menu-col';
+
+          // Level 2 Title
+          const colTitle = document.createElement('h4');
+          colTitle.className = 'mega-col-title';
           const subLink = document.createElement('a');
           subLink.href = `/plp.html?category_id=${sub.id}&category_name=${encodeURIComponent(sub.name)}`;
           subLink.textContent = sub.name;
-          subItem.append(subLink);
-          subList.append(subItem);
+          colTitle.append(subLink);
+          col.append(colTitle);
+
+          // Level 3 Leaf Products
+          const leaves = sub.children && sub.children.length > 0 ? sub.children : [];
+          if (leaves.length > 0) {
+            const leafList = document.createElement('ul');
+            leafList.className = 'mega-leaf-list';
+
+            leaves.slice(0, 6).forEach((leaf) => {
+              const leafItem = document.createElement('li');
+              leafItem.className = 'mega-leaf-item';
+              const leafLink = document.createElement('a');
+              leafLink.href = `/plp.html?category_id=${leaf.id}&category_name=${encodeURIComponent(leaf.name)}`;
+              leafLink.textContent = leaf.name;
+              leafItem.append(leafLink);
+              leafList.append(leafItem);
+            });
+
+            if (leaves.length > 6) {
+              const viewAllItem = document.createElement('li');
+              viewAllItem.className = 'mega-leaf-item mega-view-all';
+              const viewAllLink = document.createElement('a');
+              viewAllLink.href = `/plp.html?category_id=${sub.id}&category_name=${encodeURIComponent(sub.name)}`;
+              viewAllLink.textContent = `All ${sub.name} →`;
+              viewAllItem.append(viewAllLink);
+              leafList.append(viewAllItem);
+            }
+
+            col.append(leafList);
+          }
+
+          megaGrid.append(col);
         });
 
-        dropdown.append(subList);
+        dropdown.append(megaGrid);
         item.append(dropdown);
       }
 

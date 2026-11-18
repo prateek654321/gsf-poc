@@ -285,4 +285,233 @@ export function getCategoryTargets(categoryId = '', categoryName = '') {
   ];
 }
 
+/**
+ * Full 3-Level Category Hierarchy Metadata (Level 1 Parent -> Level 2 Subcategory -> Level 3 Leaf)
+ */
+export const CATEGORY_HIERARCHY_TREE = [
+  {
+    id: 5461,
+    name: 'Braking',
+    level: 1,
+    children: [
+      {
+        id: 5464,
+        name: 'Brake Pads & Discs',
+        level: 2,
+        parentId: 5461,
+        children: [
+          { id: 5467, name: 'Brake Pads', compId: '816', level: 3, parentId: 5464 },
+          { id: 5470, name: 'Brake Discs', compId: '871', level: 3, parentId: 5464 },
+          { id: 5473, name: 'Brake Pad Wear Sensor', compId: '817', level: 3, parentId: 5464 },
+          { id: 5476, name: 'Brake Pad Fitting Kit', compId: '902', level: 3, parentId: 5464 },
+          { id: 5479, name: 'Brake Pad & Disc Kit', compId: '15654', level: 3, parentId: 5464 },
+        ],
+      },
+      {
+        id: 5494,
+        name: 'Brake Shoes & Drums',
+        level: 2,
+        parentId: 5461,
+        children: [
+          { id: 5497, name: 'Brake Shoes', compId: '12044', level: 3, parentId: 5494 },
+          { id: 5500, name: 'Brake Drums', compId: '957', level: 3, parentId: 5494 },
+          { id: 5506, name: 'Handbrake Shoes', compId: '15661', level: 3, parentId: 5494 },
+        ],
+      },
+      {
+        id: 5521,
+        name: 'Brake Hydraulics',
+        level: 2,
+        parentId: 5461,
+        children: [
+          { id: 5524, name: 'Brake Caliper', compId: '814', level: 3, parentId: 5521 },
+          { id: 5527, name: 'Brake Caliper Repair Kit', compId: '872', level: 3, parentId: 5521 },
+          { id: 5545, name: 'Brake Hose', compId: '963', level: 3, parentId: 5521 },
+          { id: 5548, name: 'Brake Master Cylinder', compId: '967', level: 3, parentId: 5521 },
+        ],
+      },
+      {
+        id: 5584,
+        name: 'Brake Electrical',
+        level: 2,
+        parentId: 5461,
+        children: [
+          { id: 5587, name: 'Brake Light Switch', compId: '815', level: 3, parentId: 5584 },
+          { id: 8697, name: 'ABS Ring', compId: '868', level: 3, parentId: 5584 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 5278,
+    name: 'Service Parts',
+    level: 1,
+    children: [
+      {
+        id: 5281,
+        name: 'Filters',
+        level: 2,
+        parentId: 5278,
+        children: [
+          { id: 5284, name: 'Oil Filter', compId: '844', level: 3, parentId: 5281 },
+          { id: 5287, name: 'Air Filter', compId: '804', level: 3, parentId: 5281 },
+          { id: 5293, name: 'Cabin Filter', compId: '819', level: 3, parentId: 5281 },
+          { id: 5290, name: 'Fuel Filter', compId: '803', level: 3, parentId: 5281 },
+        ],
+      },
+      {
+        id: 5320,
+        name: 'Lubricants & Fluids',
+        level: 2,
+        parentId: 5278,
+        children: [
+          { id: 5323, name: 'Engine Oil', compId: '17048', level: 3, parentId: 5320 },
+          { id: 5326, name: 'Antifreeze & Coolant', compId: '808', level: 3, parentId: 5320 },
+          { id: 5329, name: 'Brake Fluid', compId: '22393', level: 3, parentId: 5320 },
+          { id: 5332, name: 'Screen Wash', compId: '22394', level: 3, parentId: 5320 },
+        ],
+      },
+      {
+        id: 5359,
+        name: 'Plugs',
+        level: 2,
+        parentId: 5278,
+        children: [
+          { id: 5362, name: 'Spark Plugs', compId: '854', level: 3, parentId: 5359 },
+          { id: 5365, name: 'Glow Plug', compId: '949', level: 3, parentId: 5359 },
+        ],
+      },
+      {
+        id: 5389,
+        name: 'Wiper Blades',
+        level: 2,
+        parentId: 5278,
+        children: [
+          { id: 5392, name: 'Wiper Blades', compId: '867', level: 3, parentId: 5389 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 5986,
+    name: 'Electrical',
+    level: 1,
+    children: [
+      {
+        id: 5992,
+        name: 'Batteries',
+        level: 2,
+        parentId: 5986,
+        children: [
+          { id: 5992, name: 'Car Battery', compId: '810', level: 3, parentId: 5992 },
+        ],
+      },
+      {
+        id: 6019,
+        name: 'Sensors',
+        level: 2,
+        parentId: 5986,
+        children: [
+          { id: 6049, name: 'MAF Sensor', compId: '805', level: 3, parentId: 6019 },
+        ],
+      },
+    ],
+  },
+];
+
+/**
+ * Resolves 3-level breadcrumb path & subcategory quick-links for any category ID
+ * @param {string|number} categoryId
+ * @param {string} [categoryName]
+ * @returns {{ level: number, current: object, breadcrumbs: Array, subcategories: Array }}
+ */
+export function getCategoryNavInfo(categoryId = '', categoryName = '') {
+  const catIdNum = parseInt(categoryId, 10);
+  const nameNorm = (categoryName || '').toLowerCase().trim();
+
+  // Search in hierarchy tree
+  for (const l1 of CATEGORY_HIERARCHY_TREE) {
+    // Matches Level 1
+    if (l1.id === catIdNum || (nameNorm && l1.name.toLowerCase() === nameNorm)) {
+      const allLeaves = [];
+      (l1.children || []).forEach((l2) => {
+        (l2.children || []).forEach((l3) => allLeaves.push(l3));
+      });
+
+      return {
+        level: 1,
+        current: { id: l1.id, name: l1.name },
+        breadcrumbs: [
+          { name: 'Home', href: '/' },
+          { name: l1.name, href: `/plp.html?category_id=${l1.id}&category_name=${encodeURIComponent(l1.name)}` },
+        ],
+        subcategories: (l1.children || []).map((c) => ({
+          id: c.id,
+          name: c.name,
+          href: `/plp.html?category_id=${c.id}&category_name=${encodeURIComponent(c.name)}`,
+        })),
+        quickLeaves: allLeaves.slice(0, 6).map((leaf) => ({
+          id: leaf.id,
+          name: leaf.name,
+          href: `/plp.html?category_id=${leaf.id}&category_name=${encodeURIComponent(leaf.name)}`,
+        })),
+      };
+    }
+
+    // Matches Level 2
+    for (const l2 of (l1.children || [])) {
+      if (l2.id === catIdNum || (nameNorm && l2.name.toLowerCase() === nameNorm)) {
+        return {
+          level: 2,
+          current: { id: l2.id, name: l2.name },
+          breadcrumbs: [
+            { name: 'Home', href: '/' },
+            { name: l1.name, href: `/plp.html?category_id=${l1.id}&category_name=${encodeURIComponent(l1.name)}` },
+            { name: l2.name, href: `/plp.html?category_id=${l2.id}&category_name=${encodeURIComponent(l2.name)}` },
+          ],
+          subcategories: (l2.children || []).map((c) => ({
+            id: c.id,
+            name: c.name,
+            href: `/plp.html?category_id=${c.id}&category_name=${encodeURIComponent(c.name)}`,
+          })),
+        };
+      }
+
+      // Matches Level 3
+      for (const l3 of (l2.children || [])) {
+        if (l3.id === catIdNum || (nameNorm && l3.name.toLowerCase() === nameNorm)) {
+          return {
+            level: 3,
+            current: { id: l3.id, name: l3.name },
+            breadcrumbs: [
+              { name: 'Home', href: '/' },
+              { name: l1.name, href: `/plp.html?category_id=${l1.id}&category_name=${encodeURIComponent(l1.name)}` },
+              { name: l2.name, href: `/plp.html?category_id=${l2.id}&category_name=${encodeURIComponent(l2.name)}` },
+              { name: l3.name, href: `/plp.html?category_id=${l3.id}&category_name=${encodeURIComponent(l3.name)}` },
+            ],
+            subcategories: (l2.children || []).map((c) => ({
+              id: c.id,
+              name: c.name,
+              href: `/plp.html?category_id=${c.id}&category_name=${encodeURIComponent(c.name)}`,
+              active: c.id === l3.id,
+            })),
+          };
+        }
+      }
+    }
+  }
+
+  // Fallback if not found in static tree
+  const displayName = categoryName || (catIdNum ? `Category ${catIdNum}` : 'All Parts');
+  return {
+    level: 1,
+    current: { id: catIdNum || 5461, name: displayName },
+    breadcrumbs: [
+      { name: 'Home', href: '/' },
+      { name: displayName, href: `/plp.html?category_id=${categoryId}&category_name=${encodeURIComponent(displayName)}` },
+    ],
+    subcategories: [],
+  };
+}
+
 export default resolveCategoryComponentIds;
