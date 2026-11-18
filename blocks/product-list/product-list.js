@@ -1,4 +1,9 @@
-import { fetchCatalogProducts, getBrandName, isSkuFitted } from '../../scripts/catalog-service.js';
+import {
+  fetchCatalogProducts,
+  getBrandName,
+  isSkuFitted,
+  getBrandNameFromQuality,
+} from '../../scripts/catalog-service.js';
 import { getStoredVehicle } from '../../scripts/vehicle-lookup.js';
 import { getConfig } from '../../scripts/config.js';
 
@@ -229,9 +234,12 @@ export default async function decorate(block) {
 
     activeKeys.forEach((code) => {
       activeFilters[code].forEach((val) => {
+        const displayVal = (code === 'quality' || code === 'brand')
+          ? getBrandNameFromQuality(val, val)
+          : val;
         pillsHtml += `
           <button type="button" class="filter-pill" data-code="${code}" data-val="${val}">
-            <span>${val}</span>
+            <span>${displayVal}</span>
             <span class="pill-remove">✕</span>
           </button>
         `;
@@ -340,16 +348,16 @@ export default async function decorate(block) {
   function renderFacets(aggregations) {
     facetsContainer.innerHTML = '';
 
-    // Filter to ONLY basic filter types (Brand & Price).
+    // Filter to ONLY basic filter types: Brand (attribute code 'quality') and Price.
     // Strictly removes Category, Product Group, and all obscure technical filters.
     // Shows Brand filter only if at least 2 distinct brands are eligible.
-    const allowedCodes = ['brand', 'manufacturer', 'price', 'quality'];
+    const allowedCodes = ['quality', 'brand', 'price'];
     const validAggs = (aggregations || []).filter((agg) => {
       const code = (agg.attribute_code || '').toLowerCase();
       const label = (agg.label || '').toLowerCase();
       if (code.includes('category') || label.includes('category')) return false;
       if (code.includes('product_group') || label.includes('product group')) return false;
-      if (!allowedCodes.includes(code) && !label.includes('brand') && !label.includes('price')) return false;
+      if (!allowedCodes.includes(code) && !label.includes('brand') && !label.includes('quality') && !label.includes('price')) return false;
       return agg.options && agg.options.length >= 2;
     });
 
@@ -365,12 +373,13 @@ export default async function decorate(block) {
 
       const activeInGroup = activeFilters[agg.attribute_code] || [];
       const hasActive = activeInGroup.length > 0;
+      const facetLabel = (agg.attribute_code === 'quality') ? 'Brand' : (agg.label || agg.attribute_code);
 
       const title = document.createElement('button');
       title.type = 'button';
       title.className = 'facet-accordion-header';
       title.innerHTML = `
-        <span class="facet-title-text">${agg.label || agg.attribute_code}</span>
+        <span class="facet-title-text">${facetLabel}</span>
         <div class="facet-header-actions">
           ${hasActive ? `<span class="facet-active-count">${activeInGroup.length}</span>` : ''}
           <span class="facet-chevron">▾</span>
@@ -385,7 +394,7 @@ export default async function decorate(block) {
         const searchInput = document.createElement('input');
         searchInput.type = 'text';
         searchInput.className = 'facet-filter-search';
-        searchInput.placeholder = `Search ${agg.label || 'options'}...`;
+        searchInput.placeholder = `Search ${facetLabel}...`;
         searchInput.addEventListener('input', (e) => {
           const q = e.target.value.toLowerCase();
           content.querySelectorAll('.facet-item').forEach((item) => {
@@ -404,12 +413,15 @@ export default async function decorate(block) {
         item.className = 'facet-item';
 
         const isChecked = activeInGroup.includes(String(opt.value));
+        const displayLabel = (agg.attribute_code === 'quality')
+          ? getBrandNameFromQuality(opt.value, opt.label)
+          : (opt.label || opt.value);
 
         item.innerHTML = `
           <label class="facet-label">
             <input type="checkbox" value="${opt.value}" data-code="${agg.attribute_code}" ${isChecked ? 'checked' : ''} />
             <span class="custom-checkbox"></span>
-            <span class="facet-text">${opt.label || opt.value}</span>
+            <span class="facet-text">${displayLabel}</span>
             <span class="facet-count">${opt.count}</span>
           </label>
         `;

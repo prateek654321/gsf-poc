@@ -16,6 +16,71 @@ import { getConfig } from './config.js';
 const fitmentCache = new Map();
 
 /**
+ * Magento Quality Attribute Code to Brand mapping
+ * The attribute code used in Adobe Commerce / Magento for Brand is 'quality'
+ */
+export const BRAND_QUALITY_MAP = {
+  91098: { name: 'EBC Brakes', key: 'ebc' },
+  90988: { name: 'Borg & Beck', key: 'borgbeck' },
+  90743: { name: 'First Line', key: 'firstline' },
+  90671: { name: 'Blue Print', key: 'blueprint' },
+  90755: { name: 'Zimmermann', key: 'zimmermann' },
+  90744: { name: 'Bosch', key: 'bosch' },
+  90745: { name: 'Brembo', key: 'brembo' },
+  90746: { name: 'Febi Bilstein', key: 'febi' },
+  90747: { name: 'A2A', key: 'a2a' },
+};
+
+/**
+ * Resolves the Magento 'quality' attribute code for a given brand name or item
+ * @param {string|object} brandNameOrItem
+ * @returns {string}
+ */
+export function getQualityCodeForBrand(brandNameOrItem) {
+  if (!brandNameOrItem) return '';
+  if (typeof brandNameOrItem === 'object') {
+    if (brandNameOrItem.quality) return String(brandNameOrItem.quality);
+    const brand = getBrandName(brandNameOrItem);
+    return getQualityCodeForBrand(brand);
+  }
+
+  const name = String(brandNameOrItem).trim().toLowerCase();
+  for (const [code, info] of Object.entries(BRAND_QUALITY_MAP)) {
+    if (info.name.toLowerCase() === name || info.key === name || name.includes(info.key)) {
+      return code;
+    }
+  }
+
+  if (name.includes('ebc')) return '91098';
+  if (name.includes('borg')) return '90988';
+  if (name.includes('first line') || name.includes('firstline')) return '90743';
+  if (name.includes('blueprint') || name.includes('blue print')) return '90671';
+  if (name.includes('zimmermann')) return '90755';
+
+  return '';
+}
+
+/**
+ * Resolves a human-readable brand name from a Magento 'quality' attribute code or raw label
+ * @param {string} qualityCode
+ * @param {string} [fallback='']
+ * @returns {string}
+ */
+export function getBrandNameFromQuality(qualityCode, fallback = '') {
+  const code = String(qualityCode || '').trim();
+  if (BRAND_QUALITY_MAP[code]) {
+    return BRAND_QUALITY_MAP[code].name;
+  }
+  const lower = String(fallback || '').trim().toLowerCase();
+  if (lower === 'ebc') return 'EBC Brakes';
+  if (lower === 'borgbeck' || lower === 'borg & beck') return 'Borg & Beck';
+  if (lower === 'firstline' || lower === 'first line') return 'First Line';
+  if (lower === 'blueprint' || lower === 'blue print') return 'Blue Print';
+  if (lower === 'zimmermann') return 'Zimmermann';
+  return fallback || code;
+}
+
+/**
  * Checks whether an SKU is in any active vehicle fitment pool
  * @param {string} sku
  * @returns {boolean}
@@ -46,19 +111,25 @@ export function isSkuFitted(sku) {
 export function getBrandName(item) {
   if (!item) return '';
 
-  // 1. From extraVariable.brand_info.title
+  // 1. From quality attribute code
+  const quality = String(item.quality || '').trim();
+  if (quality && BRAND_QUALITY_MAP[quality]) {
+    return BRAND_QUALITY_MAP[quality].name;
+  }
+
+  // 2. From extraVariable.brand_info.title
   if (item.extraVariable?.brand_info?.title) {
     const t = item.extraVariable.brand_info.title.trim();
     const lower = t.toLowerCase();
     if (lower === 'ebc') return 'EBC Brakes';
     if (lower === 'borgbeck' || lower === 'borg & beck') return 'Borg & Beck';
     if (lower === 'firstline' || lower === 'first line') return 'First Line';
-    if (lower === 'blueprint') return 'Blue Print';
+    if (lower === 'blueprint' || lower === 'blue print') return 'Blue Print';
     if (lower === 'zimmermann') return 'Zimmermann';
     return t;
   }
 
-  // 2. From productFitmentInfo (label === 'Brand')
+  // 3. From productFitmentInfo (label === 'Brand')
   const fitmentBrand = item.productFitmentInfo?.find(
     (f) => f.label?.toLowerCase() === 'brand',
   )?.value;
@@ -68,18 +139,10 @@ export function getBrandName(item) {
     if (lower === 'ebc') return 'EBC Brakes';
     if (lower === 'borgbeck' || lower === 'borg & beck') return 'Borg & Beck';
     if (lower === 'firstline' || lower === 'first line') return 'First Line';
-    if (lower === 'blueprint') return 'Blue Print';
+    if (lower === 'blueprint' || lower === 'blue print') return 'Blue Print';
     if (lower === 'zimmermann') return 'Zimmermann';
     return fb;
   }
-
-  // 3. From quality attribute code
-  const quality = String(item.quality || '');
-  if (quality === '91098') return 'EBC Brakes';
-  if (quality === '90988') return 'Borg & Beck';
-  if (quality === '90743') return 'First Line';
-  if (quality === '90671') return 'Blue Print';
-  if (quality === '90755') return 'Zimmermann';
 
   // 4. Inferred from SKU prefix
   const sku = (item.sku || '').toUpperCase();
@@ -131,35 +194,40 @@ export function sortProducts(items, sort = { position: 'ASC' }) {
 
 /**
  * Builds clean basic aggregations (Brand and Price only).
- * Filters out category, product_group, and all obscure technical noise.
+ * Uses 'quality' as the attribute_code for Brand filtering as per Magento specification.
  * Shows Brand filter ONLY if at least 2 distinct brands exist in the available items.
  */
-function buildBasicAggregations(items) {
-  const brandCounts = new Map();
+export function buildBasicAggregations(items) {
+  const qualityMap = new Map();
 
   items.forEach((item) => {
-    const brand = getBrandName(item);
-    if (brand) {
-      brandCounts.set(brand, (brandCounts.get(brand) || 0) + 1);
+    const brandName = getBrandName(item);
+    if (!brandName) return;
+
+    const qualityCode = String(item.quality || '').trim() || getQualityCodeForBrand(brandName) || brandName;
+    if (!qualityMap.has(qualityCode)) {
+      qualityMap.set(qualityCode, {
+        label: brandName,
+        value: qualityCode,
+        count: 0,
+      });
     }
+    const entry = qualityMap.get(qualityCode);
+    entry.count += 1;
   });
 
-  const eligibleBrands = Array.from(brandCounts.entries())
-    .filter(([_, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1]); // Descending by count
+  const eligibleOptions = Array.from(qualityMap.values())
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => b.count - a.count);
 
   const aggregations = [];
 
-  // Show Brand filter for available items ONLY if at least 2 distinct brands are eligible
-  if (eligibleBrands.length >= 2) {
+  // Show Brand filter with attribute_code 'quality' ONLY if at least 2 distinct brands are eligible
+  if (eligibleOptions.length >= 2) {
     aggregations.push({
-      attribute_code: 'brand',
+      attribute_code: 'quality',
       label: 'Brand',
-      options: eligibleBrands.map(([brandName, count]) => ({
-        label: brandName,
-        value: brandName,
-        count,
-      })),
+      options: eligibleOptions,
     });
   }
 
@@ -291,16 +359,25 @@ export async function fetchCatalogProducts({
       }
     }
 
-    // 1. Filter by active basic filters (Brand)
+    // 1. Filter by active basic filters (quality attribute code for Brand)
     let filteredItems = fitmentPool.rawItems;
-    const selectedBrands = filters.brand || filters.manufacturer || filters.quality;
-    if (selectedBrands && selectedBrands.length > 0) {
-      const brandArray = (Array.isArray(selectedBrands) ? selectedBrands : [selectedBrands])
-        .map((b) => String(b).toLowerCase().trim());
+    const selectedQualities = filters.quality || filters.brand || filters.manufacturer;
+    if (selectedQualities && selectedQualities.length > 0) {
+      const qualityArray = (Array.isArray(selectedQualities) ? selectedQualities : [selectedQualities])
+        .map((q) => String(q).toLowerCase().trim());
 
       filteredItems = filteredItems.filter((item) => {
+        const itemQuality = String(item.quality || '').trim().toLowerCase();
         const itemBrand = getBrandName(item).toLowerCase().trim();
-        return brandArray.some((b) => itemBrand === b || itemBrand.includes(b) || b.includes(itemBrand));
+        const mappedCode = String(getQualityCodeForBrand(itemBrand) || '').toLowerCase();
+
+        return qualityArray.some((q) => (
+          (itemQuality && itemQuality === q)
+          || (mappedCode && mappedCode === q)
+          || itemBrand === q
+          || itemBrand.includes(q)
+          || q.includes(itemBrand)
+        ));
       });
     }
 
@@ -372,14 +449,23 @@ export async function fetchCatalogProducts({
     });
 
     let items = candidateRes.items || [];
-    // Filter by brand if selected
-    const selectedBrands = filters.brand || filters.manufacturer || filters.quality;
-    if (selectedBrands && selectedBrands.length > 0) {
-      const brandArray = (Array.isArray(selectedBrands) ? selectedBrands : [selectedBrands])
-        .map((b) => String(b).toLowerCase().trim());
+    // Filter by quality attribute code for Brand if selected
+    const selectedQualities = filters.quality || filters.brand || filters.manufacturer;
+    if (selectedQualities && selectedQualities.length > 0) {
+      const qualityArray = (Array.isArray(selectedQualities) ? selectedQualities : [selectedQualities])
+        .map((q) => String(q).toLowerCase().trim());
       items = items.filter((item) => {
+        const itemQuality = String(item.quality || '').trim().toLowerCase();
         const itemBrand = getBrandName(item).toLowerCase().trim();
-        return brandArray.some((b) => itemBrand === b || itemBrand.includes(b) || b.includes(itemBrand));
+        const mappedCode = String(getQualityCodeForBrand(itemBrand) || '').toLowerCase();
+
+        return qualityArray.some((q) => (
+          (itemQuality && itemQuality === q)
+          || (mappedCode && mappedCode === q)
+          || itemBrand === q
+          || itemBrand.includes(q)
+          || q.includes(itemBrand)
+        ));
       });
     }
 
@@ -412,14 +498,21 @@ export async function fetchCatalogProducts({
     };
   }
 
-  // Standard GraphQL fetch for other sorts
+  // Standard GraphQL fetch for other sorts: ensure 'quality' attribute code is passed to Magento GraphQL
+  const normalizedFilters = { ...filters };
+  if (normalizedFilters.brand && !normalizedFilters.quality) {
+    const brands = Array.isArray(normalizedFilters.brand) ? normalizedFilters.brand : [normalizedFilters.brand];
+    normalizedFilters.quality = brands.map((b) => getQualityCodeForBrand(b) || b);
+    delete normalizedFilters.brand;
+  }
+
   const result = await fetchProducts({
     categoryId: categoryId || null,
     searchPhrase: searchPhrase || null,
     sort,
     page: currentPage,
     pageSize: targetPageSize,
-    customFilters: filters,
+    customFilters: normalizedFilters,
   });
 
   let items = result.items || [];
@@ -436,7 +529,7 @@ export async function fetchCatalogProducts({
         sort,
         page: currentPage + 1,
         pageSize: targetPageSize,
-        customFilters: filters,
+        customFilters: normalizedFilters,
       });
 
       if (nextPage.items && nextPage.items.length > 0) {
