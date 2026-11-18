@@ -11,6 +11,9 @@ export const MAGENTO_CONFIG = new Proxy({}, {
     if (prop === 'vrmDetailsEndpoint') return cfg.vrmDetailsEndpoint;
     if (prop === 'fitmentSkusEndpoint') return cfg.fitmentSkusEndpoint;
     if (prop === 'vehicleCompatibilityEndpoint') return cfg.vehicleCompatibilityEndpoint;
+    if (prop === 'manufacturersEndpoint') return cfg.manufacturersEndpoint;
+    if (prop === 'modelsEndpoint') return cfg.modelsEndpoint;
+    if (prop === 'vehicleMetadataEndpoint') return cfg.vehicleMetadataEndpoint;
     if (prop === 'restEndpoint') return cfg.vrmDetailsEndpoint.replace(/\/gsf-vrm\/vrmdetails$/, '');
     if (prop === 'specialCoupon') return cfg.specialCoupon;
     if (prop === 'storeCode') return cfg.storeCode;
@@ -487,4 +490,120 @@ export async function checkProductCompatibility({ sku, sessionId, componentId, c
     statusCode: resp?.statusCode,
     recommendedSku: resp?.recommendedSku || null,
   };
+}
+
+// In-memory cache for vehicle hierarchy
+const vehicleHierarchyCache = {
+  manufacturers: null,
+  models: new Map(),
+  metadata: new Map(),
+};
+
+/**
+ * REST: Fetch all vehicle manufacturers (Makes)
+ * @returns {Promise<Array<{ id: number, title: string, type: string }>>}
+ */
+export async function fetchManufacturers() {
+  if (vehicleHierarchyCache.manufacturers) {
+    return vehicleHierarchyCache.manufacturers;
+  }
+
+  const url = MAGENTO_CONFIG.manufacturersEndpoint;
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Manufacturers request failed (${res.status})`);
+    const data = await res.json();
+    const list = data?.[0]?.manufacturers || data?.manufacturers || [];
+    vehicleHierarchyCache.manufacturers = list;
+    return list;
+  } catch (err) {
+    console.warn('Failed to fetch manufacturers from live API:', err);
+    return [];
+  }
+}
+
+/**
+ * REST: Fetch all models for a manufacturer
+ * @param {number|string} manufacturerId
+ * @returns {Promise<Array<{ id: number, title: string, type: string }>>}
+ */
+export async function fetchModelsByManufacturer(manufacturerId) {
+  if (!manufacturerId) return [];
+  const key = String(manufacturerId);
+  if (vehicleHierarchyCache.models.has(key)) {
+    return vehicleHierarchyCache.models.get(key);
+  }
+
+  const url = `${MAGENTO_CONFIG.modelsEndpoint}?manufacturerId=${encodeURIComponent(manufacturerId)}`;
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Models request failed (${res.status})`);
+    const data = await res.json();
+    const list = data?.[0]?.models || data?.models || [];
+    vehicleHierarchyCache.models.set(key, list);
+    return list;
+  } catch (err) {
+    console.warn(`Failed to fetch models for manufacturer ${manufacturerId}:`, err);
+    return [];
+  }
+}
+
+/**
+ * REST: Fetch vehicle metadata (model versions, engine sizes, fuels, gCodePartialIDs, session)
+ * @param {object} params
+ * @returns {Promise<object>}
+ */
+export async function fetchVehicleMetadata({
+  modelId,
+  manufacturerId,
+  modelVersionId = '',
+  engineSizeId = '',
+  bodyStyleId = '',
+  powerId = '',
+  isMvl = 1,
+  type = 'Car',
+} = {}) {
+  const cacheKey = `${modelId}_${manufacturerId}_${modelVersionId}_${engineSizeId}_${bodyStyleId}_${powerId}_${isMvl}_${type}`;
+  if (vehicleHierarchyCache.metadata.has(cacheKey)) {
+    return vehicleHierarchyCache.metadata.get(cacheKey);
+  }
+
+  const params = new URLSearchParams({
+    modelId: String(modelId || ''),
+    manufacturerId: String(manufacturerId || ''),
+    type: type || 'Car',
+  });
+  if (modelVersionId) params.append('modelVersionId', String(modelVersionId));
+  if (engineSizeId) params.append('engineSizeId', String(engineSizeId));
+  if (bodyStyleId) params.append('bodyStyleId', String(bodyStyleId));
+  if (powerId) params.append('powerId', String(powerId));
+  if (isMvl) params.append('isMvl', String(isMvl));
+
+  const url = `${MAGENTO_CONFIG.vehicleMetadataEndpoint}?${params.toString()}`;
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Vehicle metadata request failed (${res.status})`);
+    const data = await res.json();
+    const entry = data?.[0] || data || {};
+    const result = {
+      metaData: entry.metaData || {},
+      vehicle: entry.vehicle || {},
+      session: entry.session || {},
+      isMvl: Boolean(entry.isMvl),
+    };
+    vehicleHierarchyCache.metadata.set(cacheKey, result);
+    return result;
+  } catch (err) {
+    console.warn('Failed to fetch vehicle metadata:', err);
+    return null;
+  }
 }

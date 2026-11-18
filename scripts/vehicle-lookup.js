@@ -347,43 +347,69 @@ export function selectGarageVehicle(vrm) {
 
 /**
  * Creates and activates a manually selected vehicle (Make -> Model -> Year -> Engine)
+ * Supports both live GSF Magento REST API vehicle hierarchy and fallback static database.
  * @param {string} make
  * @param {string} model
  * @param {string|number} year
  * @param {string} engineName
- * @returns {object|null}
+ * @param {object} [extraMeta={}]
+ * @returns {object}
  */
-export function selectManualVehicle(make, model, year, engineName) {
-  const modelData = UK_MANUAL_VEHICLE_DATABASE[make]?.[model];
-  if (!modelData) return null;
+export function selectManualVehicle(make, model, year, engineName, extraMeta = {}) {
+  let cleanYear = String(year || '');
+  const yearMatch = cleanYear.match(/\b(19\d\d|20\d\d)\b/);
+  if (yearMatch) {
+    cleanYear = yearMatch[1];
+  } else if (!cleanYear || cleanYear.length < 4) {
+    cleanYear = String(new Date().getFullYear() - 3);
+  }
 
-  const engineObj = modelData.engines.find((e) => e.name === engineName) || modelData.engines[0];
-  const syntheticVrm = `${make.slice(0, 3).toUpperCase()}${String(year).slice(-2)}${model.slice(0, 2).toUpperCase()}`;
+  const modelData = UK_MANUAL_VEHICLE_DATABASE[make]?.[model];
+  const engineObj = modelData?.engines?.find((e) => e.name === engineName) || {
+    name: engineName,
+    fuel: extraMeta.fuel || (engineName.toLowerCase().includes('diesel') ? 'Diesel' : (engineName.toLowerCase().includes('petrol') ? 'Petrol' : 'Hybrid/Petrol')),
+    size: extraMeta.engineSize || (engineName.match(/\d\.\d[L|l]?/) ? engineName.match(/\d\.\d[L|l]?/)[0] : '2.0L'),
+    componentIds: ['814', '816', '817', '871', '872', '804', '819', '857', '870', '806', '820'],
+    validSkus: ['EBCP2DK045RP1', 'EBCP2DK036RP1', 'BABBKB6027'],
+  };
+
+  const cleanMakeCode = (make || 'CAR').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+  const cleanModelCode = (model || 'MD').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase();
+  const syntheticVrm = `${cleanMakeCode}${cleanYear.slice(-2)}${cleanModelCode}`;
 
   const vehicle = {
     make,
     model,
-    description: `${make} ${model} ${engineObj.name}`,
+    modelVersion: extraMeta.modelVersionTitle || extraMeta.modelVersion || model,
+    description: `${make} ${model} ${extraMeta.modelVersionTitle ? `(${extraMeta.modelVersionTitle}) ` : ''}${engineName}`.trim(),
     fuel: engineObj.fuel,
     engineSize: engineObj.size,
-    year: String(year),
+    year: cleanYear,
     colour: 'Any',
-    bodyStyle: 'Standard',
+    bodyStyle: extraMeta.bodyStyle || 'Standard',
     isManualSelect: true,
+    gCodePartialIDs: extraMeta.gCodePartialIDs || [],
+    makeId: extraMeta.makeId,
+    modelId: extraMeta.modelId,
+    modelVersionId: extraMeta.modelVersionId,
   };
 
-  const summary = `${make} • ${model} • ${engineObj.size} • ${engineObj.fuel} • ${year}`;
-  const motHealth = getVehicleMotAndHealth(syntheticVrm, year);
+  const summary = `${make} • ${model} • ${vehicle.engineSize} • ${vehicle.fuel} • ${cleanYear}`;
+  const motHealth = getVehicleMotAndHealth(syntheticVrm, cleanYear);
+
+  const sessionId = extraMeta.sessionId || `manual-${syntheticVrm.toLowerCase()}`;
+  const componentIds = extraMeta.componentIds || engineObj.componentIds || ['814', '816', '817', '871', '872', '804', '819', '857', '870', '806', '820'];
+  const validSkus = extraMeta.validSkus || engineObj.validSkus || ['EBCP2DK045RP1', 'EBCP2DK036RP1', 'BABBKB6027'];
 
   const entry = {
     vrm: syntheticVrm,
     summary,
     vehicle,
     motHealth,
-    sessionId: `manual-${syntheticVrm.toLowerCase()}`,
-    componentIds: engineObj.componentIds || ['814', '816', '817', '871'],
-    componentId: engineObj.componentIds?.[0] || '814',
-    validSkus: engineObj.validSkus || ['EBCP2DK045RP1', 'EBCP2DK036RP1'],
+    sessionId,
+    componentIds,
+    componentId: componentIds[0] || '814',
+    validSkus,
   };
 
   saveVehicleState(

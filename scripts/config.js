@@ -10,6 +10,9 @@ const DEFAULT_CONFIG = {
   vrmDetailsEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vrmdetails',
   fitmentSkusEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/skus',
   vehicleCompatibilityEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vehiclecompatibility',
+  manufacturersEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/manufacturers',
+  modelsEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/models',
+  vehicleMetadataEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vehiclemetadata',
   catalogApiEndpoint: '', // Destination for future Adobe App Builder + API Mesh endpoint
   placeholderImage: 'https://gsf-carparts-staging.agilecollab.com/media/catalog/product/placeholder/default/product_placeholder_2.png',
   specialCoupon: 'GSF22',
@@ -51,6 +54,21 @@ export function getConfig() {
       || window.CONFIG?.vehicleCompatibilityEndpoint
       || window.ENV?.VEHICLE_COMPATIBILITY_ENDPOINT
       || DEFAULT_CONFIG.vehicleCompatibilityEndpoint,
+
+    manufacturersEndpoint: getMetadata('manufacturers-endpoint')
+      || window.CONFIG?.manufacturersEndpoint
+      || window.ENV?.MANUFACTURERS_ENDPOINT
+      || DEFAULT_CONFIG.manufacturersEndpoint,
+
+    modelsEndpoint: getMetadata('models-endpoint')
+      || window.CONFIG?.modelsEndpoint
+      || window.ENV?.MODELS_ENDPOINT
+      || DEFAULT_CONFIG.modelsEndpoint,
+
+    vehicleMetadataEndpoint: getMetadata('vehicle-metadata-endpoint')
+      || window.CONFIG?.vehicleMetadataEndpoint
+      || window.ENV?.VEHICLE_METADATA_ENDPOINT
+      || DEFAULT_CONFIG.vehicleMetadataEndpoint,
 
     catalogApiEndpoint: getMetadata('catalog-api-endpoint')
       || window.CONFIG?.catalogApiEndpoint

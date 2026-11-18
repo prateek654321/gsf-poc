@@ -7,6 +7,11 @@ import {
   UK_MANUAL_VEHICLE_DATABASE,
   selectManualVehicle,
 } from '../../scripts/vehicle-lookup.js';
+import {
+  fetchManufacturers,
+  fetchModelsByManufacturer,
+  fetchVehicleMetadata,
+} from '../../scripts/magento-api.js';
 import { showPageLoader } from '../../scripts/scripts.js';
 
 function renderVehicleSummary(container, vrm, summary, vehicle) {
@@ -117,8 +122,7 @@ function renderManualSelector(container) {
         <div class="manual-dropdown-field">
           <label for="manual-make-select">1. Make</label>
           <select id="manual-make-select" class="manual-select" required>
-            <option value="">Select Make...</option>
-            ${Object.keys(UK_MANUAL_VEHICLE_DATABASE).map((m) => `<option value="${m}">${m}</option>`).join('')}
+            <option value="">⏳ Loading Makes from GSF Catalog...</option>
           </select>
         </div>
         <div class="manual-dropdown-field">
@@ -128,13 +132,13 @@ function renderManualSelector(container) {
           </select>
         </div>
         <div class="manual-dropdown-field">
-          <label for="manual-year-select">3. Year</label>
+          <label for="manual-year-select">3. Year / Generation</label>
           <select id="manual-year-select" class="manual-select" disabled required>
             <option value="">Select Year...</option>
           </select>
         </div>
         <div class="manual-dropdown-field">
-          <label for="manual-engine-select">4. Engine / Fuel</label>
+          <label for="manual-engine-select">4. Engine / Spec</label>
           <select id="manual-engine-select" class="manual-select" disabled required>
             <option value="">Select Engine...</option>
           </select>
@@ -155,91 +159,325 @@ function renderManualSelector(container) {
   const submitBtn = container.querySelector('.manual-submit-btn');
   const form = container.querySelector('.vehicle-manual-form');
 
-  makeSelect.addEventListener('change', () => {
-    const make = makeSelect.value;
+  let currentSelection = {
+    makeId: null,
+    makeName: '',
+    modelId: null,
+    modelName: '',
+    modelVersionId: null,
+    modelVersionTitle: '',
+    gCodePartialIDs: [],
+    sessionId: '',
+    engineData: null,
+  };
+
+  // 1. Initial Load: Fetch Manufacturers from live GSF Magento REST API
+  (async () => {
+    try {
+      const makes = await fetchManufacturers();
+      if (makes && makes.length > 0) {
+        makes.sort((a, b) => a.title.localeCompare(b.title));
+
+        makeSelect.innerHTML = `<option value="">Select Make (${makes.length} Available)...</option>`;
+
+        const topMakes = ['Volkswagen', 'Ford', 'BMW', 'Audi', 'Vauxhall', 'Toyota', 'Mercedes-Benz', 'Nissan', 'Peugeot', 'Kia'];
+        const popularGroup = document.createElement('optgroup');
+        popularGroup.label = '⭐ Popular UK Brands';
+        const allGroup = document.createElement('optgroup');
+        allGroup.label = 'All Manufacturers (A-Z)';
+
+        makes.forEach((m) => {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = m.title;
+          opt.dataset.name = m.title;
+          allGroup.append(opt);
+
+          if (topMakes.includes(m.title)) {
+            const popOpt = opt.cloneNode(true);
+            popularGroup.append(popOpt);
+          }
+        });
+
+        makeSelect.append(popularGroup, allGroup);
+      } else {
+        // Fallback to static UK_MANUAL_VEHICLE_DATABASE
+        makeSelect.innerHTML = '<option value="">Select Make...</option>';
+        Object.keys(UK_MANUAL_VEHICLE_DATABASE).forEach((m) => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          opt.dataset.name = m;
+          makeSelect.append(opt);
+        });
+      }
+    } catch (err) {
+      console.warn('Could not load makes from GSF API, falling back:', err);
+      makeSelect.innerHTML = '<option value="">Select Make...</option>';
+      Object.keys(UK_MANUAL_VEHICLE_DATABASE).forEach((m) => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        opt.dataset.name = m;
+        makeSelect.append(opt);
+      });
+    }
+  })();
+
+  // 2. Cascade: Make changed -> fetch Models
+  makeSelect.addEventListener('change', async () => {
+    const makeId = makeSelect.value;
+    const makeName = makeSelect.selectedOptions[0]?.dataset?.name || makeSelect.value;
+
     modelSelect.innerHTML = '<option value="">Select Model...</option>';
+    yearSelect.innerHTML = '<option value="">Select Year...</option>';
+    engineSelect.innerHTML = '<option value="">Select Engine...</option>';
+    modelSelect.disabled = true;
+    yearSelect.disabled = true;
+    engineSelect.disabled = true;
+    submitBtn.disabled = true;
+
+    if (!makeId) return;
+
+    currentSelection = {
+      makeId,
+      makeName,
+      modelId: null,
+      modelName: '',
+      modelVersionId: null,
+      modelVersionTitle: '',
+      gCodePartialIDs: [],
+      sessionId: '',
+      engineData: null,
+    };
+
+    modelSelect.innerHTML = `<option value="">⏳ Loading models for ${makeName}...</option>`;
+    modelSelect.disabled = true;
+
+    try {
+      const models = await fetchModelsByManufacturer(makeId);
+      if (models && models.length > 0) {
+        models.sort((a, b) => a.title.localeCompare(b.title));
+        modelSelect.innerHTML = `<option value="">Select Model (${models.length} Available)...</option>`;
+        models.forEach((m) => {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = m.title;
+          opt.dataset.name = m.title;
+          modelSelect.append(opt);
+        });
+        modelSelect.disabled = false;
+      } else if (UK_MANUAL_VEHICLE_DATABASE[makeName]) {
+        modelSelect.innerHTML = '<option value="">Select Model...</option>';
+        Object.keys(UK_MANUAL_VEHICLE_DATABASE[makeName]).forEach((m) => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          opt.dataset.name = m;
+          modelSelect.append(opt);
+        });
+        modelSelect.disabled = false;
+      } else {
+        modelSelect.innerHTML = '<option value="">No models found</option>';
+      }
+    } catch (err) {
+      console.warn('Error fetching models:', err);
+      modelSelect.innerHTML = '<option value="">Error loading models</option>';
+    }
+  });
+
+  // 3. Cascade: Model changed -> fetch Model Versions / Generations
+  modelSelect.addEventListener('change', async () => {
+    const modelId = modelSelect.value;
+    const modelName = modelSelect.selectedOptions[0]?.dataset?.name || modelSelect.value;
+
     yearSelect.innerHTML = '<option value="">Select Year...</option>';
     engineSelect.innerHTML = '<option value="">Select Engine...</option>';
     yearSelect.disabled = true;
     engineSelect.disabled = true;
     submitBtn.disabled = true;
 
-    if (make && UK_MANUAL_VEHICLE_DATABASE[make]) {
-      const models = Object.keys(UK_MANUAL_VEHICLE_DATABASE[make]);
-      models.forEach((m) => {
-        const opt = document.createElement('option');
-        opt.value = m;
-        opt.textContent = m;
-        modelSelect.append(opt);
+    if (!modelId) return;
+
+    currentSelection.modelId = modelId;
+    currentSelection.modelName = modelName;
+    currentSelection.modelVersionId = null;
+    currentSelection.modelVersionTitle = '';
+    currentSelection.gCodePartialIDs = [];
+
+    yearSelect.innerHTML = '<option value="">⏳ Loading generations & years...</option>';
+    yearSelect.disabled = true;
+
+    try {
+      const metaRes = await fetchVehicleMetadata({
+        modelId,
+        manufacturerId: currentSelection.makeId,
+        type: 'Car',
       });
-      modelSelect.disabled = false;
-    } else {
-      modelSelect.disabled = true;
+
+      const versions = metaRes?.metaData?.modelVersions || [];
+      if (versions.length > 0) {
+        yearSelect.innerHTML = `<option value="">Select Generation / Year (${versions.length} Available)...</option>`;
+        versions.forEach((v) => {
+          const opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = v.title;
+          opt.dataset.title = v.title;
+          yearSelect.append(opt);
+        });
+        yearSelect.disabled = false;
+      } else if (UK_MANUAL_VEHICLE_DATABASE[currentSelection.makeName]?.[modelName]) {
+        const years = UK_MANUAL_VEHICLE_DATABASE[currentSelection.makeName][modelName].years || [];
+        yearSelect.innerHTML = '<option value="">Select Year...</option>';
+        years.forEach((y) => {
+          const opt = document.createElement('option');
+          opt.value = y;
+          opt.textContent = y;
+          opt.dataset.title = y;
+          yearSelect.append(opt);
+        });
+        yearSelect.disabled = false;
+      } else {
+        yearSelect.innerHTML = '<option value="2019">Standard Generation (2015-2023)</option>';
+        yearSelect.disabled = false;
+      }
+    } catch (err) {
+      console.warn('Error fetching vehicle metadata:', err);
+      yearSelect.innerHTML = '<option value="">Error loading years</option>';
     }
   });
 
-  modelSelect.addEventListener('change', () => {
-    const make = makeSelect.value;
-    const model = modelSelect.value;
-    yearSelect.innerHTML = '<option value="">Select Year...</option>';
+  // 4. Cascade: Year / Generation changed -> fetch Engine Specifications & GCodePartialIDs
+  yearSelect.addEventListener('change', async () => {
+    const mvId = yearSelect.value;
+    const mvTitle = yearSelect.selectedOptions[0]?.dataset?.title || yearSelect.value;
+
     engineSelect.innerHTML = '<option value="">Select Engine...</option>';
     engineSelect.disabled = true;
     submitBtn.disabled = true;
 
-    if (make && model && UK_MANUAL_VEHICLE_DATABASE[make]?.[model]) {
-      const years = UK_MANUAL_VEHICLE_DATABASE[make][model].years || [];
-      years.forEach((y) => {
-        const opt = document.createElement('option');
-        opt.value = y;
-        opt.textContent = y;
-        yearSelect.append(opt);
-      });
-      yearSelect.disabled = false;
-    } else {
-      yearSelect.disabled = true;
-    }
-  });
+    if (!mvId) return;
 
-  yearSelect.addEventListener('change', () => {
-    const make = makeSelect.value;
-    const model = modelSelect.value;
-    engineSelect.innerHTML = '<option value="">Select Engine...</option>';
-    submitBtn.disabled = true;
+    currentSelection.modelVersionId = mvId;
+    currentSelection.modelVersionTitle = mvTitle;
 
-    if (make && model && UK_MANUAL_VEHICLE_DATABASE[make]?.[model]) {
-      const engines = UK_MANUAL_VEHICLE_DATABASE[make][model].engines || [];
-      engines.forEach((e) => {
-        const opt = document.createElement('option');
-        opt.value = e.name;
-        opt.textContent = e.name;
-        engineSelect.append(opt);
+    engineSelect.innerHTML = '<option value="">⏳ Loading engine variants...</option>';
+    engineSelect.disabled = true;
+
+    try {
+      const metaRes = await fetchVehicleMetadata({
+        modelId: currentSelection.modelId,
+        manufacturerId: currentSelection.makeId,
+        modelVersionId: mvId,
+        isMvl: 1,
+        type: 'Car',
       });
+
+      if (metaRes?.session?.sessionId) {
+        currentSelection.sessionId = metaRes.session.sessionId;
+      }
+      if (metaRes?.metaData?.gCodePartialIDs) {
+        currentSelection.gCodePartialIDs = metaRes.metaData.gCodePartialIDs;
+      }
+
+      const sizes = metaRes?.metaData?.engineSizes || [];
+      const fuels = metaRes?.metaData?.fuelTypes || [];
+
+      if (sizes.length > 0) {
+        engineSelect.innerHTML = '<option value="">Select Engine Specification...</option>';
+        const seen = new Set();
+
+        sizes.forEach((s) => {
+          if (fuels.length > 0) {
+            fuels.forEach((f) => {
+              const name = `${s.title} • ${f.title}`;
+              if (!seen.has(name)) {
+                seen.add(name);
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                opt.dataset.engineData = JSON.stringify({ name, size: s.title, fuel: f.title, id: s.id });
+                engineSelect.append(opt);
+              }
+            });
+          } else {
+            const name = `${s.title} Engine`;
+            if (!seen.has(name)) {
+              seen.add(name);
+              const opt = document.createElement('option');
+              opt.value = name;
+              opt.textContent = name;
+              opt.dataset.engineData = JSON.stringify({ name, size: s.title, fuel: 'Petrol/Diesel', id: s.id });
+              engineSelect.append(opt);
+            }
+          }
+        });
+
+        engineSelect.disabled = false;
+      } else if (UK_MANUAL_VEHICLE_DATABASE[currentSelection.makeName]?.[currentSelection.modelName]) {
+        const engines = UK_MANUAL_VEHICLE_DATABASE[currentSelection.makeName][currentSelection.modelName].engines || [];
+        engineSelect.innerHTML = '<option value="">Select Engine...</option>';
+        engines.forEach((e) => {
+          const opt = document.createElement('option');
+          opt.value = e.name;
+          opt.textContent = e.name;
+          opt.dataset.engineData = JSON.stringify(e);
+          engineSelect.append(opt);
+        });
+        engineSelect.disabled = false;
+      } else {
+        engineSelect.innerHTML = `
+          <option value="">Select Engine...</option>
+          <option value="2.0L Diesel (150 bhp)">2.0L Diesel (150 bhp)</option>
+          <option value="1.5L Petrol (130 bhp)">1.5L Petrol (130 bhp)</option>
+          <option value="2.0L Petrol (190 bhp)">2.0L Petrol (190 bhp)</option>
+        `;
+        engineSelect.disabled = false;
+      }
+    } catch (err) {
+      console.warn('Error fetching engine metadata:', err);
+      engineSelect.innerHTML = '<option value="2.0L Diesel (150 bhp)">2.0L Diesel (150 bhp)</option>';
       engineSelect.disabled = false;
-    } else {
-      engineSelect.disabled = true;
     }
   });
 
+  // 5. Engine selected -> enable submit button
   engineSelect.addEventListener('change', () => {
     submitBtn.disabled = !engineSelect.value;
+    try {
+      const raw = engineSelect.selectedOptions[0]?.dataset?.engineData;
+      if (raw) currentSelection.engineData = JSON.parse(raw);
+    } catch {
+      // Ignore
+    }
   });
 
+  // 6. Submit -> activate vehicle and navigate to PLP
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const make = makeSelect.value;
-    const model = modelSelect.value;
-    const year = yearSelect.value;
-    const engine = engineSelect.value;
+    const makeName = currentSelection.makeName || makeSelect.selectedOptions[0]?.dataset?.name || makeSelect.value;
+    const modelName = currentSelection.modelName || modelSelect.selectedOptions[0]?.dataset?.name || modelSelect.value;
+    const yearTitle = currentSelection.modelVersionTitle || yearSelect.selectedOptions[0]?.dataset?.title || yearSelect.value;
+    const engineName = engineSelect.value;
 
-    if (!make || !model || !year || !engine) return;
+    if (!makeName || !modelName || !yearTitle || !engineName) return;
 
     showPageLoader();
-    selectManualVehicle(make, model, year, engine);
 
-    // If on homepage or categories, navigate directly to PLP with this vehicle active
+    selectManualVehicle(makeName, modelName, yearTitle, engineName, {
+      makeId: currentSelection.makeId,
+      modelId: currentSelection.modelId,
+      modelVersionId: currentSelection.modelVersionId,
+      modelVersionTitle: currentSelection.modelVersionTitle,
+      gCodePartialIDs: currentSelection.gCodePartialIDs,
+      sessionId: currentSelection.sessionId,
+      fuel: currentSelection.engineData?.fuel,
+      engineSize: currentSelection.engineData?.size,
+    });
+
     const isCatalogPage = window.location.pathname.includes('plp') || window.location.pathname.includes('pdp');
     if (!isCatalogPage) {
-      window.location.href = `/plp.html?category_id=5461&category_name=Braking`;
+      window.location.href = '/plp.html?category_id=5461&category_name=Braking';
     }
   });
 }

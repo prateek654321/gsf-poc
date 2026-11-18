@@ -389,6 +389,18 @@
   box-shadow: 0 0 0 3px rgba(255, 209, 0, 0.3);
 }
 
+.vehicle-search .manual-select optgroup {
+  font-weight: 800;
+  color: #00234b;
+  background: #f8fafc;
+}
+
+.vehicle-search .manual-select option {
+  font-weight: 500;
+  color: #111111;
+  background: #ffffff;
+}
+
 .vehicle-search .manual-action-row {
   display: flex;
   justify-content: flex-end;
