@@ -169,7 +169,16 @@ export default async function decorate(block) {
   const clearFiltersBtn = block.querySelector('.btn-clear-filters');
 
   // View Mode: 'fitted' (default when vehicle is active) vs 'all' (all products)
-  const initialStored = getStoredVehicle();
+  let initialStored = getStoredVehicle();
+  const urlVrm = (urlParams.get('vrm') || '').trim();
+  if (urlVrm && (!initialStored.hasVehicle || initialStored.vrm !== urlVrm)) {
+    try {
+      await lookupVrmAndFetchSkus(urlVrm, categoryId, categoryName);
+      initialStored = getStoredVehicle();
+    } catch (err) {
+      console.warn('Auto VRM from URL failed:', err);
+    }
+  }
   let viewMode = initialStored.hasVehicle ? 'fitted' : 'all';
 
   pageSizeSelect.value = String(pageSize);
