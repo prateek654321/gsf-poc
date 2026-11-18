@@ -5,6 +5,7 @@ import {
   checkCurrentVehicleFitment,
   lookupVrmAndFetchSkus,
 } from '../../scripts/vehicle-lookup.js';
+import { isUniversalProduct } from '../../scripts/catalog-service.js';
 
 export default async function decorate(block) {
   block.innerHTML = `
@@ -117,6 +118,24 @@ export default async function decorate(block) {
   async function updateFitmentStatus() {
     fitmentBox.innerHTML = '<div class="spinner"></div>';
     const categoryId = product.extraVariable?.breadcrumbs?.[0]?.id || '';
+    const categoryName = product.extraVariable?.breadcrumbs?.[0]?.label || '';
+
+    // Check if universal product
+    const isUniversal = isUniversalProduct(product, categoryId, categoryName);
+    if (isUniversal) {
+      fitmentBox.className = 'pdp-fitment-box universal';
+      fitmentBox.innerHTML = `
+        <div class="fitment-header">
+          <span class="fitment-icon">🌐</span>
+          <div>
+            <strong>Universal Part – Fits All Vehicles</strong>
+            <p>This item is universal and suitable for all standard vehicles and workshop applications. No vehicle registration check required.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
     const status = await checkCurrentVehicleFitment(product.sku, categoryId);
 
     if (status.hasVehicle) {
@@ -130,6 +149,37 @@ export default async function decorate(block) {
               <p>Confirmed compatible with <strong>${status.summary || status.vrm}</strong> (${status.vrm})</p>
             </div>
           </div>
+          <button type="button" class="btn-fitment-details-toggle" aria-expanded="false">
+            <span class="details-toggle-icon">ℹ</span>
+            <span class="details-toggle-text">Why does this fit? View Technical Specifications</span>
+            <span class="details-toggle-chevron">▾</span>
+          </button>
+          <div class="fitment-specs-drawer" style="display: none;">
+            <div class="specs-grid">
+              <div class="spec-col">
+                <h5 class="specs-col-heading">Verified Vehicle Match</h5>
+                <ul class="specs-list">
+                  <li><span class="spec-lbl">Registration:</span> <span class="spec-val">${status.vrm}</span></li>
+                  <li><span class="spec-lbl">Vehicle:</span> <span class="spec-val">${status.vehicle?.make || ''} ${status.vehicle?.model || ''}</span></li>
+                  <li><span class="spec-lbl">Engine / Fuel:</span> <span class="spec-val">${status.vehicle?.engineSize || ''} ${status.vehicle?.fuel || ''}</span></li>
+                  <li><span class="spec-lbl">Year of Reg:</span> <span class="spec-val">${status.vehicle?.year || ''}</span></li>
+                </ul>
+              </div>
+              <div class="spec-col">
+                <h5 class="specs-col-heading">Technical Part Specifications</h5>
+                <ul class="specs-list">
+                  <li><span class="spec-lbl">SKU / MPN:</span> <span class="spec-val">${product.sku}</span></li>
+                  ${product.art_nr ? `<li><span class="spec-lbl">Part Number:</span> <span class="spec-val">${product.art_nr}</span></li>` : ''}
+                  <li><span class="spec-lbl">Component Group:</span> <span class="spec-val">${categoryName || 'Braking / Chassis'}</span></li>
+                  <li><span class="spec-lbl">Certification:</span> <span class="spec-val">ECE R90 / OE Equivalent</span></li>
+                </ul>
+              </div>
+            </div>
+            <div class="specs-guarantee-note">
+              <span class="guarantee-icon">🛡️</span>
+              <span><strong>100% GSF Fitment Guarantee:</strong> If this part does not fit your vehicle, return it free within 30 days under our Fitment Guarantee.</span>
+            </div>
+          </div>
         `;
       } else {
         fitmentBox.className = 'pdp-fitment-box not-fits';
@@ -141,7 +191,33 @@ export default async function decorate(block) {
               <p>This part is not compatible with <strong>${status.summary || status.vrm}</strong> (${status.vrm}).</p>
             </div>
           </div>
+          <button type="button" class="btn-fitment-details-toggle" aria-expanded="false">
+            <span class="details-toggle-icon">ℹ</span>
+            <span class="details-toggle-text">Why doesn't it fit? View Details & Find Compatible Parts</span>
+            <span class="details-toggle-chevron">▾</span>
+          </button>
+          <div class="fitment-specs-drawer" style="display: none;">
+            <div class="not-fits-note">
+              <p>The mounting specifications or component dimensions of this part do not match the chassis and engine code of your <strong>${status.summary || status.vrm}</strong>.</p>
+            </div>
+            <a href="/plp.html?category_id=${categoryId}&category_name=${encodeURIComponent(categoryName)}" class="btn-find-compatible">
+              <span>Browse Verified Parts for ${status.vrm}</span>
+              <span>→</span>
+            </a>
+          </div>
         `;
+      }
+
+      // Hook up toggle drawer
+      const toggleBtn = fitmentBox.querySelector('.btn-fitment-details-toggle');
+      const drawer = fitmentBox.querySelector('.fitment-specs-drawer');
+      if (toggleBtn && drawer) {
+        toggleBtn.addEventListener('click', () => {
+          const isExpanded = drawer.style.display !== 'none';
+          drawer.style.display = isExpanded ? 'none' : 'block';
+          toggleBtn.setAttribute('aria-expanded', String(!isExpanded));
+          toggleBtn.querySelector('.details-toggle-chevron').textContent = isExpanded ? '▾' : '▴';
+        });
       }
     } else {
       fitmentBox.className = 'pdp-fitment-box unverified';

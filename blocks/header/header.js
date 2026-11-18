@@ -1,4 +1,14 @@
 import { fetchCategories } from '../../scripts/magento-api.js';
+import {
+  getStoredVehicle,
+  getGarageVehicles,
+  selectGarageVehicle,
+  removeFromGarage,
+  lookupVrmAndFetchSkus,
+  clearVehicleState,
+  formatPlateDisplay,
+  normalizeVrm,
+} from '../../scripts/vehicle-lookup.js';
 
 export default async function decorate(block) {
   block.innerHTML = '';
@@ -36,6 +46,174 @@ export default async function decorate(block) {
     }
   });
 
+  // "My Garage" Multi-Vehicle Switcher Widget
+  const garageWidget = document.createElement('div');
+  garageWidget.className = 'header-garage-widget';
+
+  function renderGarageWidget(container) {
+    const stored = getStoredVehicle();
+    const garage = getGarageVehicles();
+    const hasActive = Boolean(stored.hasVehicle && stored.vrm);
+
+    const activeDisplay = hasActive
+      ? `${formatPlateDisplay(stored.vrm)} • ${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim()
+      : (garage.length > 0 ? `${garage.length} Saved Vehicles` : 'Add Vehicle');
+
+    container.innerHTML = `
+      <button type="button" class="header-garage-btn ${hasActive ? 'active-vehicle' : ''}" aria-expanded="false" title="My Garage - Manage saved vehicles">
+        <span class="garage-icon">🚗</span>
+        <div class="garage-text-wrap">
+          <span class="garage-k">My Garage</span>
+          <span class="garage-v">${activeDisplay}</span>
+        </div>
+        <span class="garage-chevron">▾</span>
+      </button>
+      <div class="header-garage-dropdown" style="display: none;">
+        <div class="garage-dropdown-header">
+          <div class="garage-title-row">
+            <h4>🚗 My Garage</h4>
+            <span class="garage-count-badge">${garage.length} Saved</span>
+          </div>
+          <p class="garage-subtitle">Switch active vehicle to filter guaranteed fit parts across the store.</p>
+        </div>
+        <div class="garage-vehicle-list">
+          ${garage.length === 0 ? '<p class="garage-empty">No vehicles saved in your garage yet.</p>' : ''}
+          ${garage.map((v) => {
+            const isActive = hasActive && normalizeVrm(v.vrm) === normalizeVrm(stored.vrm);
+            return `
+              <div class="garage-vehicle-card ${isActive ? 'is-active' : ''}">
+                <div class="garage-plate-pill">
+                  <span class="plate-gb">GB</span>
+                  <span class="plate-text">${formatPlateDisplay(v.vrm)}</span>
+                </div>
+                <div class="garage-card-details">
+                  <div class="garage-vehicle-name">${v.vehicle?.make || ''} ${v.vehicle?.model || ''}</div>
+                  <div class="garage-vehicle-meta">${v.summary || ''}</div>
+                  ${isActive ? '<span class="garage-status-active">✓ Active Vehicle</span>' : ''}
+                </div>
+                <div class="garage-card-actions">
+                  ${!isActive ? `<button type="button" class="btn-select-garage-vehicle" data-vrm="${v.vrm}" title="Switch to this vehicle">Select</button>` : ''}
+                  <button type="button" class="btn-remove-garage-vehicle" data-vrm="${v.vrm}" title="Remove from garage">✕</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div class="garage-quick-add">
+          <form class="garage-add-form">
+            <div class="uk-plate garage-plate-input-box">
+              <span class="uk-plate-gb">GB</span>
+              <input type="text" placeholder="ENTER REG" maxlength="9" class="garage-vrm-input uk-plate-text" />
+            </div>
+            <button type="submit" class="btn-garage-add">Add Vehicle</button>
+          </form>
+          <div class="garage-add-msg" style="display:none;"></div>
+        </div>
+        ${hasActive ? `
+          <div class="garage-dropdown-footer">
+            <button type="button" class="btn-clear-garage-active">Browse Without Vehicle (Clear Active)</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    const btn = container.querySelector('.header-garage-btn');
+    const dropdown = container.querySelector('.header-garage-dropdown');
+    const addForm = container.querySelector('.garage-add-form');
+    const addInput = container.querySelector('.garage-vrm-input');
+    const addMsg = container.querySelector('.garage-add-msg');
+    const clearActiveBtn = container.querySelector('.btn-clear-garage-active');
+
+    // Toggle dropdown
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dropdown.style.display !== 'none';
+      dropdown.style.display = isOpen ? 'none' : 'block';
+      btn.setAttribute('aria-expanded', String(!isOpen));
+    });
+
+    dropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    // Auto-format plate input
+    if (addInput) {
+      addInput.addEventListener('input', (e) => {
+        const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        e.target.value = formatPlateDisplay(raw);
+      });
+    }
+
+    // Switch vehicle
+    container.querySelectorAll('.btn-select-garage-vehicle').forEach((selectBtn) => {
+      selectBtn.addEventListener('click', () => {
+        const { vrm } = selectBtn.dataset;
+        selectGarageVehicle(vrm);
+        dropdown.style.display = 'none';
+        renderGarageWidget(container);
+      });
+    });
+
+    // Remove vehicle
+    container.querySelectorAll('.btn-remove-garage-vehicle').forEach((removeBtn) => {
+      removeBtn.addEventListener('click', () => {
+        const { vrm } = removeBtn.dataset;
+        removeFromGarage(vrm);
+        renderGarageWidget(container);
+      });
+    });
+
+    // Quick add vehicle
+    if (addForm) {
+      addForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const vrm = normalizeVrm(addInput.value);
+        if (!vrm || vrm.length < 2) {
+          addMsg.textContent = 'Please enter a valid UK registration plate.';
+          addMsg.className = 'garage-add-msg error';
+          addMsg.style.display = 'block';
+          return;
+        }
+
+        addMsg.innerHTML = '<span class="pulsing-spinner" style="width:14px; height:14px; display:inline-block;"></span> Looking up DVLA...';
+        addMsg.className = 'garage-add-msg loading';
+        addMsg.style.display = 'block';
+
+        try {
+          await lookupVrmAndFetchSkus(vrm);
+          addMsg.textContent = `✓ Added ${vrm} to your garage!`;
+          addMsg.className = 'garage-add-msg success';
+          setTimeout(() => {
+            renderGarageWidget(container);
+          }, 600);
+        } catch (err) {
+          addMsg.textContent = err.message || 'Vehicle not found.';
+          addMsg.className = 'garage-add-msg error';
+        }
+      });
+    }
+
+    // Clear active vehicle
+    if (clearActiveBtn) {
+      clearActiveBtn.addEventListener('click', () => {
+        clearVehicleState();
+        dropdown.style.display = 'none';
+        renderGarageWidget(container);
+      });
+    }
+  }
+
+  renderGarageWidget(garageWidget);
+
+  window.addEventListener('vehicle-lookup:updated', () => renderGarageWidget(garageWidget));
+  window.addEventListener('vehicle-lookup:cleared', () => renderGarageWidget(garageWidget));
+  window.addEventListener('garage:updated', () => renderGarageWidget(garageWidget));
+
+  document.addEventListener('click', () => {
+    const dd = garageWidget.querySelector('.header-garage-dropdown');
+    if (dd) dd.style.display = 'none';
+  });
+
   const actions = document.createElement('div');
   actions.className = 'header-actions';
   actions.innerHTML = `
@@ -53,7 +231,7 @@ export default async function decorate(block) {
     </div>
   `;
 
-  brandBar.append(logo, searchForm, actions);
+  brandBar.append(logo, searchForm, garageWidget, actions);
 
   // 2. Navigation Bar (Strictly no horizontal scroll, fixed clean layout)
   const navBar = document.createElement('nav');

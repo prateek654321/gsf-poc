@@ -104,6 +104,73 @@ export function isSkuFitted(sku) {
 }
 
 /**
+ * Determines whether a product is a Universal part (fits all vehicles)
+ * or vehicle-specific (requires fitment check).
+ *
+ * @param {object} item
+ * @param {string} [categoryId='']
+ * @param {string} [categoryName='']
+ * @returns {boolean}
+ */
+export function isUniversalProduct(item, categoryId = '', categoryName = '') {
+  if (!item) return false;
+
+  // 1. Explicit universal attributes
+  if (item.is_universal || item.universal_fit || item.extraVariable?.is_universal) {
+    return true;
+  }
+
+  // 2. Universal categories (Tools, Car Care, Cleaning, Accessories)
+  const universalCategoryIds = ['5320', '6500', '6600', '6700', '7000'];
+  if (categoryId && universalCategoryIds.includes(String(categoryId))) {
+    return true;
+  }
+
+  // 3. Keyword matching on name and category text
+  const name = (item.name || '').toLowerCase();
+  const cat = (categoryName || '').toLowerCase();
+  const text = `${name} ${cat}`;
+
+  const universalKeywords = [
+    'screenwash',
+    'screen wash',
+    'de-icer',
+    'de icer',
+    'antifreeze',
+    'coolant universal',
+    'wd-40',
+    'wd40',
+    'grease',
+    'funnel',
+    'toolkit',
+    'tool set',
+    'socket set',
+    'spanner',
+    'screwdriver',
+    'jack',
+    'axle stand',
+    'jump lead',
+    'booster cable',
+    'shampoo',
+    'car polish',
+    'wax',
+    'microfibre',
+    'sponge',
+    'chamois',
+    'air freshener',
+    'tyre inflator',
+    'pressure gauge',
+    'first aid',
+    'bulb kit universal',
+    'fuse kit universal',
+    'brake cleaner',
+    'car care',
+  ];
+
+  return universalKeywords.some((kw) => text.includes(kw));
+}
+
+/**
  * Extracts a normalized, human-readable brand name for any product
  * @param {object} item
  * @returns {string}

@@ -3,6 +3,7 @@ import {
   getBrandName,
   isSkuFitted,
   getBrandNameFromQuality,
+  isUniversalProduct,
 } from '../../scripts/catalog-service.js';
 import { getStoredVehicle } from '../../scripts/vehicle-lookup.js';
 import { getConfig } from '../../scripts/config.js';
@@ -286,8 +287,16 @@ export default async function decorate(block) {
     const brandInfo = p.extraVariable?.brand_info;
     const stored = getStoredVehicle();
 
+    const isUniversal = isUniversalProduct(p, categoryId, categoryName);
     let fitmentBadgeHtml = '';
-    if (stored.hasVehicle) {
+
+    if (isUniversal) {
+      fitmentBadgeHtml = `
+        <div class="badge-fitment universal">
+          <span class="badge-icon">🌐</span>
+          <span>Universal Fit – Fits All Vehicles</span>
+        </div>`;
+    } else if (stored.hasVehicle) {
       const isFitted = p.isCompatible
         || isSkuFitted(p.sku)
         || stored.validSkus?.some((s) => s.toUpperCase() === (p.sku || '').toUpperCase());

@@ -13,7 +13,45 @@ export const STORAGE_KEYS = {
   VEHICLE_DATA: 'gsf_vehicle_data',
   VALID_SKUS: 'gsf_vehicle_valid_skus',
   VEHICLE_SUMMARY: 'gsf_vehicle_summary',
+  GARAGE_VEHICLES: 'gsf_garage_vehicles',
 };
+
+const DEMO_GARAGE_SEEDS = [
+  {
+    vrm: 'AK18WEX',
+    summary: 'BMW • 3 Series • 2.0L • Diesel • 2018',
+    vehicle: {
+      make: 'BMW',
+      model: '3 Series',
+      description: 'BMW 320d M Sport Saloon',
+      fuel: 'Diesel',
+      engineSize: '2.0L',
+      year: '2018',
+      colour: 'Blue',
+      bodyStyle: 'Saloon',
+    },
+    sessionId: 'demo-session-ak18wex',
+    componentIds: ['814', '816', '817', '871', '872', '902', '927'],
+    validSkus: ['EBCP2DK045RP1', 'EBCP2DK036RP1', 'BABBKB6027'],
+  },
+  {
+    vrm: 'GV57KCE',
+    summary: 'Ford • Fiesta • 1.2L • Petrol • 2007',
+    vehicle: {
+      make: 'Ford',
+      model: 'Fiesta',
+      description: 'Ford Fiesta Zetec Climate 1.25 Hatchback',
+      fuel: 'Petrol',
+      engineSize: '1.2L',
+      year: '2007',
+      colour: 'Silver',
+      bodyStyle: 'Hatchback',
+    },
+    sessionId: 'demo-session-gv57kce',
+    componentIds: ['814', '816', '871'],
+    validSkus: [],
+  },
+];
 
 export const COOKIE_NAMES = {
   REG_NO: 'gsf_reg_no',
@@ -105,6 +143,90 @@ export function getStoredVehicle() {
   };
 }
 
+export function getGarageVehicles() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS.GARAGE_VEHICLES);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    // Fallback
+  }
+  return DEMO_GARAGE_SEEDS;
+}
+
+export function saveGarageVehicles(vehicles) {
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.GARAGE_VEHICLES, JSON.stringify(vehicles || []));
+  } catch {
+    // Storage fallback
+  }
+  window.dispatchEvent(new CustomEvent('garage:updated', { detail: { vehicles } }));
+}
+
+export function addToGarage(entry) {
+  if (!entry || !entry.vrm) return getGarageVehicles();
+  const vehicles = [...getGarageVehicles()];
+  const normVrm = normalizeVrm(entry.vrm);
+  const existingIdx = vehicles.findIndex((v) => normalizeVrm(v.vrm) === normVrm);
+
+  const cleanEntry = {
+    vrm: normVrm,
+    summary: entry.summary || formatVehicleSummary(entry.vehicle),
+    vehicle: entry.vehicle || null,
+    sessionId: entry.sessionId || '',
+    componentIds: entry.componentIds || [],
+    componentId: entry.componentId || entry.componentIds?.[0] || '',
+    validSkus: entry.validSkus || [],
+    updatedAt: Date.now(),
+  };
+
+  if (existingIdx >= 0) {
+    vehicles[existingIdx] = { ...vehicles[existingIdx], ...cleanEntry };
+  } else {
+    vehicles.unshift(cleanEntry);
+  }
+
+  const trimmed = vehicles.slice(0, 6);
+  saveGarageVehicles(trimmed);
+  return trimmed;
+}
+
+export function selectGarageVehicle(vrm) {
+  const normVrm = normalizeVrm(vrm);
+  const vehicles = getGarageVehicles();
+  const target = vehicles.find((v) => normalizeVrm(v.vrm) === normVrm);
+  if (!target) return null;
+
+  saveVehicleState(
+    target.vrm,
+    target.sessionId,
+    target.componentIds,
+    target.vehicle,
+    target.validSkus,
+  );
+
+  window.dispatchEvent(new CustomEvent('vehicle-lookup:updated', { detail: target }));
+  return target;
+}
+
+export function removeFromGarage(vrm) {
+  const normVrm = normalizeVrm(vrm);
+  let vehicles = getGarageVehicles();
+  vehicles = vehicles.filter((v) => normalizeVrm(v.vrm) !== normVrm);
+  saveGarageVehicles(vehicles);
+
+  const activeStored = getStoredVehicle();
+  if (normalizeVrm(activeStored.vrm) === normVrm) {
+    if (vehicles.length > 0) {
+      selectGarageVehicle(vehicles[0].vrm);
+    } else {
+      clearVehicleState();
+    }
+  }
+}
+
 export function saveVehicleState(vrm, sessionId, componentIds, vehicleData, validSkus = []) {
   const summary = formatVehicleSummary(vehicleData);
 
@@ -121,6 +243,16 @@ export function saveVehicleState(vrm, sessionId, componentIds, vehicleData, vali
   window.localStorage.setItem(STORAGE_KEYS.VEHICLE_DATA, JSON.stringify(storedVehicle));
   window.localStorage.setItem(STORAGE_KEYS.VEHICLE_SUMMARY, summary);
   window.localStorage.setItem(STORAGE_KEYS.VALID_SKUS, JSON.stringify(validSkus || []));
+
+  // Auto-record into My Garage
+  addToGarage({
+    vrm,
+    sessionId,
+    componentIds,
+    vehicle: storedVehicle,
+    summary,
+    validSkus,
+  });
 }
 
 export function clearVehicleState() {
