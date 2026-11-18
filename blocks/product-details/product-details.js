@@ -84,17 +84,7 @@ export default async function decorate(block) {
   block.innerHTML = renderPdpSkeleton();
 
   const urlParams = new URLSearchParams(window.location.search);
-  const sku = urlParams.get('sku');
-
-  if (!sku) {
-    block.innerHTML = `
-      <div class="pdp-error">
-        <h2>Product Not Found</h2>
-        <p>No SKU provided. Please select a product from our <a href="/plp.html">catalog</a>.</p>
-      </div>
-    `;
-    return;
-  }
+  const sku = urlParams.get('sku') || 'A2AAMS100';
 
   let product = null;
   try {
@@ -352,8 +342,8 @@ export default async function decorate(block) {
   window.addEventListener('vehicle-lookup:cleared', updateFitmentStatus);
 
   // Add to basket alert demo
-  block.querySelector('.btn-add-to-cart').addEventListener('click', () => {
-    const qty = block.querySelector('#pdp-qty').value;
+  block.querySelector('.btn-add-to-cart')?.addEventListener('click', () => {
+    const qty = block.querySelector('#pdp-qty')?.value || 1;
     alert(`Added ${qty} × ${product.name} (${product.sku}) to your basket!`);
   });
 }

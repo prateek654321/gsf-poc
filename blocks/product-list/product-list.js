@@ -63,9 +63,17 @@ function getProductGridSkeletonsHtml(count = 12) {
 }
 
 export default async function decorate(block) {
+  // Dynamic Configuration & URL state management
   const appConfig = getConfig();
   const urlParams = new URLSearchParams(window.location.search);
-  const pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
+  const categoryId = urlParams.get('category_id') || '';
+  const categoryName = urlParams.get('category_name') || '';
+  const searchPhrase = urlParams.get('q') || urlParams.get('search') || '';
+  let currentPage = parseInt(urlParams.get('page'), 10) || 1;
+  let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
+  let sortField = 'position';
+  let sortDir = 'ASC';
+  let activeFilters = {};
 
   block.innerHTML = `
     <div class="plp-layout">
@@ -159,18 +167,6 @@ export default async function decorate(block) {
   const pagination = block.querySelector('.plp-pagination');
   const facetsContainer = block.querySelector('.plp-facets-container');
   const clearFiltersBtn = block.querySelector('.btn-clear-filters');
-
-  // Dynamic Configuration & URL state management
-  const appConfig = getConfig();
-  const urlParams = new URLSearchParams(window.location.search);
-  const categoryId = urlParams.get('category_id') || '';
-  const categoryName = urlParams.get('category_name') || '';
-  const searchPhrase = urlParams.get('q') || urlParams.get('search') || '';
-  let currentPage = parseInt(urlParams.get('page'), 10) || 1;
-  let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
-  let sortField = 'position';
-  let sortDir = 'ASC';
-  let activeFilters = {};
 
   // View Mode: 'fitted' (default when vehicle is active) vs 'all' (all products)
   const initialStored = getStoredVehicle();
@@ -656,7 +652,7 @@ export default async function decorate(block) {
     renderSkeletons(pageSize);
     renderFitmentAlert();
     countEl.innerHTML = '<span class="skeleton-shimmer skeleton-line skeleton-count-shimmer" style="width: 240px; height: 18px; display: inline-block;"></span>';
-    if (!facetsContainer.querySelector('.facet-group')) {
+    if (facetsContainer && !facetsContainer.querySelector('.facet-group')) {
       facetsContainer.innerHTML = getSidebarSkeletonsHtml();
     }
 
