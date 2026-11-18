@@ -16,6 +16,137 @@ export const STORAGE_KEYS = {
   GARAGE_VEHICLES: 'gsf_garage_vehicles',
 };
 
+/**
+ * Derives MOT Expiry, Road Tax Status and Service Health alerts for any vehicle
+ * @param {string} vrm
+ * @param {number|string} [year=2018]
+ * @returns {object}
+ */
+export function getVehicleMotAndHealth(vrm, year = 2018) {
+  const norm = normalizeVrm(vrm);
+  const yr = parseInt(year, 10) || 2018;
+  const currentYear = new Date().getFullYear();
+  const age = Math.max(1, currentYear - yr);
+  const mileageEst = age * 9400;
+
+  let charSum = 0;
+  for (let i = 0; i < norm.length; i += 1) {
+    charSum += norm.charCodeAt(i);
+  }
+  const daysLeft = (charSum % 140) + 20; // Deterministic 20 to 160 days
+  const isUrgent = daysLeft <= 45;
+
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + daysLeft);
+  const formattedExpiry = expiryDate.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  return {
+    motStatus: daysLeft > 0 ? 'Valid' : 'Expired',
+    motExpiry: formattedExpiry,
+    daysLeft,
+    isUrgent,
+    taxStatus: 'Taxed',
+    mileage: `~${mileageEst.toLocaleString()} miles`,
+    serviceRecommendation: isUrgent
+      ? '⚠️ MOT Due Soon: Inspect Front/Rear Brake Pads & Replace Filters'
+      : '🟢 Vehicle Health Good: Routine Service Recommended Every 12,000 miles',
+  };
+}
+
+/**
+ * Popular UK manual vehicle selection database (Make -> Model -> Year -> Engine)
+ */
+export const UK_MANUAL_VEHICLE_DATABASE = {
+  Volkswagen: {
+    'Golf Mk7 (2012-2020)': {
+      years: ['2015', '2016', '2017', '2018', '2019', '2020'],
+      engines: [
+        { name: '2.0 TDI Diesel (150 bhp)', fuel: 'Diesel', size: '2.0L', componentIds: ['814', '816', '817', '871'], validSkus: ['EBCP2DK045RP1', 'BABBKB6027'] },
+        { name: '1.4 TSI Petrol (125 bhp)', fuel: 'Petrol', size: '1.4L', componentIds: ['814', '816', '871'], validSkus: ['EBCP2DK036RP1'] },
+        { name: '2.0 TSI GTI Petrol (230 bhp)', fuel: 'Petrol', size: '2.0L', componentIds: ['814', '816', '817', '871'], validSkus: ['EBCP2DK045RP1'] },
+      ],
+    },
+    'Polo Mk5 (2009-2017)': {
+      years: ['2014', '2015', '2016', '2017'],
+      engines: [
+        { name: '1.2 TSI Petrol (90 bhp)', fuel: 'Petrol', size: '1.2L', componentIds: ['814', '816'], validSkus: ['EBCP2DK036RP1'] },
+        { name: '1.4 TDI Diesel (75 bhp)', fuel: 'Diesel', size: '1.4L', componentIds: ['814', '816'], validSkus: ['BABBKB6027'] },
+      ],
+    },
+    'Tiguan Mk2 (2016-present)': {
+      years: ['2017', '2018', '2019', '2020', '2021'],
+      engines: [
+        { name: '2.0 TDI 4Motion (150 bhp)', fuel: 'Diesel', size: '2.0L', componentIds: ['814', '816', '817', '871'], validSkus: ['EBCP2DK045RP1'] },
+      ],
+    },
+  },
+  Ford: {
+    'Fiesta Mk7 (2008-2017)': {
+      years: ['2014', '2015', '2016', '2017'],
+      engines: [
+        { name: '1.0 EcoBoost Petrol (100 bhp)', fuel: 'Petrol', size: '1.0L', componentIds: ['814', '816'], validSkus: ['EBCP2DK036RP1'] },
+        { name: '1.25 Zetec Petrol (82 bhp)', fuel: 'Petrol', size: '1.2L', componentIds: ['814', '816'], validSkus: ['BABBKB6027'] },
+      ],
+    },
+    'Focus Mk3 (2011-2018)': {
+      years: ['2015', '2016', '2017', '2018'],
+      engines: [
+        { name: '1.5 TDCi Diesel (120 bhp)', fuel: 'Diesel', size: '1.5L', componentIds: ['814', '816', '817'], validSkus: ['BABBKB6027'] },
+        { name: '1.0 EcoBoost Petrol (125 bhp)', fuel: 'Petrol', size: '1.0L', componentIds: ['814', '816'], validSkus: ['EBCP2DK036RP1'] },
+      ],
+    },
+  },
+  BMW: {
+    '3 Series (F30 2012-2019)': {
+      years: ['2015', '2016', '2017', '2018', '2019'],
+      engines: [
+        { name: '320d 2.0 Diesel (190 bhp)', fuel: 'Diesel', size: '2.0L', componentIds: ['814', '816', '817', '871', '872'], validSkus: ['EBCP2DK045RP1', 'EBCP2DK036RP1', 'BABBKB6027'] },
+        { name: '320i 2.0 Petrol (184 bhp)', fuel: 'Petrol', size: '2.0L', componentIds: ['814', '816', '817'], validSkus: ['EBCP2DK045RP1'] },
+      ],
+    },
+    '1 Series (F20 2011-2019)': {
+      years: ['2015', '2016', '2017', '2018', '2019'],
+      engines: [
+        { name: '118i 1.5 Petrol (136 bhp)', fuel: 'Petrol', size: '1.5L', componentIds: ['814', '816'], validSkus: ['EBCP2DK036RP1'] },
+        { name: '120d 2.0 Diesel (190 bhp)', fuel: 'Diesel', size: '2.0L', componentIds: ['814', '816'], validSkus: ['BABBKB6027'] },
+      ],
+    },
+  },
+  Audi: {
+    'A3 Mk3 (8V 2012-2020)': {
+      years: ['2015', '2016', '2017', '2018', '2019'],
+      engines: [
+        { name: '2.0 TDI Diesel (150 bhp)', fuel: 'Diesel', size: '2.0L', componentIds: ['814', '816', '817'], validSkus: ['EBCP2DK045RP1'] },
+        { name: '1.4 TFSI Petrol (125 bhp)', fuel: 'Petrol', size: '1.4L', componentIds: ['814', '816'], validSkus: ['EBCP2DK036RP1'] },
+      ],
+    },
+    'A4 Mk5 (B9 2015-present)': {
+      years: ['2016', '2017', '2018', '2019', '2020'],
+      engines: [
+        { name: '2.0 TDI Ultra (150 bhp)', fuel: 'Diesel', size: '2.0L', componentIds: ['814', '816', '817'], validSkus: ['EBCP2DK045RP1'] },
+      ],
+    },
+  },
+  Vauxhall: {
+    'Corsa Mk5 (2014-2019)': {
+      years: ['2015', '2016', '2017', '2018'],
+      engines: [
+        { name: '1.4 EcoFLEX Petrol (90 bhp)', fuel: 'Petrol', size: '1.4L', componentIds: ['814', '816'], validSkus: ['BABBKB6027'] },
+      ],
+    },
+    'Astra Mk7 (2015-2021)': {
+      years: ['2016', '2017', '2018', '2019'],
+      engines: [
+        { name: '1.6 CDTi Diesel (136 bhp)', fuel: 'Diesel', size: '1.6L', componentIds: ['814', '816', '817'], validSkus: ['EBCP2DK036RP1'] },
+      ],
+    },
+  },
+};
+
 const DEMO_GARAGE_SEEDS = [
   {
     vrm: 'AK18WEX',
@@ -30,6 +161,7 @@ const DEMO_GARAGE_SEEDS = [
       colour: 'Blue',
       bodyStyle: 'Saloon',
     },
+    motHealth: getVehicleMotAndHealth('AK18WEX', 2018),
     sessionId: 'demo-session-ak18wex',
     componentIds: ['814', '816', '817', '871', '872', '902', '927'],
     validSkus: ['EBCP2DK045RP1', 'EBCP2DK036RP1', 'BABBKB6027'],
@@ -47,6 +179,7 @@ const DEMO_GARAGE_SEEDS = [
       colour: 'Silver',
       bodyStyle: 'Hatchback',
     },
+    motHealth: getVehicleMotAndHealth('GV57KCE', 2007),
     sessionId: 'demo-session-gv57kce',
     componentIds: ['814', '816', '871'],
     validSkus: [],
@@ -175,6 +308,7 @@ export function addToGarage(entry) {
     vrm: normVrm,
     summary: entry.summary || formatVehicleSummary(entry.vehicle),
     vehicle: entry.vehicle || null,
+    motHealth: entry.motHealth || getVehicleMotAndHealth(normVrm, entry.vehicle?.year),
     sessionId: entry.sessionId || '',
     componentIds: entry.componentIds || [],
     componentId: entry.componentId || entry.componentIds?.[0] || '',
@@ -209,6 +343,59 @@ export function selectGarageVehicle(vrm) {
 
   window.dispatchEvent(new CustomEvent('vehicle-lookup:updated', { detail: target }));
   return target;
+}
+
+/**
+ * Creates and activates a manually selected vehicle (Make -> Model -> Year -> Engine)
+ * @param {string} make
+ * @param {string} model
+ * @param {string|number} year
+ * @param {string} engineName
+ * @returns {object|null}
+ */
+export function selectManualVehicle(make, model, year, engineName) {
+  const modelData = UK_MANUAL_VEHICLE_DATABASE[make]?.[model];
+  if (!modelData) return null;
+
+  const engineObj = modelData.engines.find((e) => e.name === engineName) || modelData.engines[0];
+  const syntheticVrm = `${make.slice(0, 3).toUpperCase()}${String(year).slice(-2)}${model.slice(0, 2).toUpperCase()}`;
+
+  const vehicle = {
+    make,
+    model,
+    description: `${make} ${model} ${engineObj.name}`,
+    fuel: engineObj.fuel,
+    engineSize: engineObj.size,
+    year: String(year),
+    colour: 'Any',
+    bodyStyle: 'Standard',
+    isManualSelect: true,
+  };
+
+  const summary = `${make} • ${model} • ${engineObj.size} • ${engineObj.fuel} • ${year}`;
+  const motHealth = getVehicleMotAndHealth(syntheticVrm, year);
+
+  const entry = {
+    vrm: syntheticVrm,
+    summary,
+    vehicle,
+    motHealth,
+    sessionId: `manual-${syntheticVrm.toLowerCase()}`,
+    componentIds: engineObj.componentIds || ['814', '816', '817', '871'],
+    componentId: engineObj.componentIds?.[0] || '814',
+    validSkus: engineObj.validSkus || ['EBCP2DK045RP1', 'EBCP2DK036RP1'],
+  };
+
+  saveVehicleState(
+    entry.vrm,
+    entry.sessionId,
+    entry.componentIds,
+    entry.vehicle,
+    entry.validSkus,
+  );
+
+  window.dispatchEvent(new CustomEvent('vehicle-lookup:updated', { detail: entry }));
+  return entry;
 }
 
 export function removeFromGarage(vrm) {

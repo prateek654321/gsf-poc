@@ -1,0 +1,26 @@
+{
+  "project": "GSF Car Parts",
+  "host": "main--gsf-poc--prateek654321.aem.live",
+  "previewHost": "main--gsf-poc--prateek654321.aem.page",
+  "liveHost": "main--gsf-poc--prateek654321.aem.live",
+  "plugins": [
+    {
+      "id": "my-garage",
+      "title": "🚗 My Garage",
+      "pinned": true,
+      "url": "/plp.html?category_id=5461&category_name=Braking&vrm=AK18WEX"
+    },
+    {
+      "id": "categories",
+      "title": "📂 Categories",
+      "pinned": true,
+      "url": "/categories.html"
+    },
+    {
+      "id": "catalog-parts",
+      "title": "📦 All Parts",
+      "pinned": true,
+      "url": "/plp.html"
+    }
+  ]
+}

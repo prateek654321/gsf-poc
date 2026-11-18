@@ -8,6 +8,7 @@ import {
   clearVehicleState,
   formatPlateDisplay,
   normalizeVrm,
+  getVehicleMotAndHealth,
 } from '../../scripts/vehicle-lookup.js';
 
 export default async function decorate(block) {
@@ -18,7 +19,7 @@ export default async function decorate(block) {
   brandBar.className = 'header-brand-bar';
 
   const logo = document.createElement('a');
-  logo.href = '/index.html';
+  logo.href = '/';
   logo.className = 'header-logo';
   logo.innerHTML = `
     <div class="logo-box">
@@ -80,18 +81,28 @@ export default async function decorate(block) {
           ${garage.length === 0 ? '<p class="garage-empty">No vehicles saved in your garage yet.</p>' : ''}
           ${garage.map((v) => {
             const isActive = hasActive && normalizeVrm(v.vrm) === normalizeVrm(stored.vrm);
+            const mot = v.motHealth || getVehicleMotAndHealth(v.vrm, v.vehicle?.year);
             return `
               <div class="garage-vehicle-card ${isActive ? 'is-active' : ''}">
-                <div class="garage-plate-pill">
-                  <span class="plate-gb">GB</span>
-                  <span class="plate-text">${formatPlateDisplay(v.vrm)}</span>
-                </div>
-                <div class="garage-card-details">
+                <div class="garage-card-main-col">
+                  <div class="garage-plate-row">
+                    <div class="garage-plate-pill">
+                      <span class="plate-gb">GB</span>
+                      <span class="plate-text">${formatPlateDisplay(v.vrm)}</span>
+                    </div>
+                    ${isActive ? '<span class="garage-status-active">✓ Active</span>' : ''}
+                  </div>
                   <div class="garage-vehicle-name">${v.vehicle?.make || ''} ${v.vehicle?.model || ''}</div>
                   <div class="garage-vehicle-meta">${v.summary || ''}</div>
-                  ${isActive ? '<span class="garage-status-active">✓ Active Vehicle</span>' : ''}
+                  <div class="garage-health-tags">
+                    <span class="garage-mot-pill ${mot.isUrgent ? 'urgent' : 'valid'}">
+                      ${mot.isUrgent ? '⚠️' : '🟢'} MOT: ${mot.motExpiry} (${mot.daysLeft}d)
+                    </span>
+                    <span class="garage-mileage-pill">🛣️ ${mot.mileage}</span>
+                  </div>
                 </div>
                 <div class="garage-card-actions">
+                  <a href="/plp.html?category_id=5461&category_name=Braking&vrm=${v.vrm}" class="btn-garage-shop" title="Shop braking and service parts">Shop Parts ➔</a>
                   ${!isActive ? `<button type="button" class="btn-select-garage-vehicle" data-vrm="${v.vrm}" title="Switch to this vehicle">Select</button>` : ''}
                   <button type="button" class="btn-remove-garage-vehicle" data-vrm="${v.vrm}" title="Remove from garage">✕</button>
                 </div>

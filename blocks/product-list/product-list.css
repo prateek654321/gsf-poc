@@ -579,6 +579,26 @@
   color: var(--color-gray-700);
 }
 
+.meta-axle {
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.3px;
+}
+
+.meta-axle.front {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.meta-axle.rear {
+  background-color: #faf5ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+}
+
 .badge-fitment {
   display: inline-flex;
   align-items: center;

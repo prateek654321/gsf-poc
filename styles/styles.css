@@ -75,6 +75,48 @@ body {
   background-color: #f4f6f9;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: opacity 0.2s ease;
+}
+
+/* Global Top Progress Loader Bar */
+#global-top-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 3.5px;
+  background: linear-gradient(90deg, #ffd100 0%, #ff5500 50%, #004b97 100%);
+  box-shadow: 0 0 12px rgba(255, 209, 0, 0.9), 0 0 6px rgba(255, 85, 0, 0.7);
+  z-index: 999999;
+  pointer-events: none;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  opacity: 0;
+}
+
+#global-top-loader.active {
+  opacity: 1;
+}
+
+/* Page Transition Animation */
+main {
+  animation: pageFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+@keyframes pageFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+body.page-navigating main {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
 }
 
 a {

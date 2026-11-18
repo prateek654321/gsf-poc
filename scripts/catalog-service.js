@@ -260,27 +260,64 @@ export function sortProducts(items, sort = { position: 'ASC' }) {
 }
 
 /**
- * Builds clean basic aggregations (Brand and Price only).
+ * Detects whether an item is for Front Axle, Rear Axle, or Both/Universal
+ * @param {object} item
+ * @returns {string}
+ */
+export function getAxlePlacement(item) {
+  if (!item) return 'Front Axle';
+  const text = `${item.name || ''} ${item.sku || ''} ${item.description?.html || ''}`.toLowerCase();
+
+  const isFront = text.includes('front') || text.includes(' fr ') || text.includes('fr-') || text.includes('f-axle') || text.includes('front-');
+  const isRear = text.includes('rear') || text.includes(' rr ') || text.includes('rr-') || text.includes('r-axle') || text.includes('rear-');
+
+  if (isFront && !isRear) return 'Front Axle';
+  if (isRear && !isFront) return 'Rear Axle';
+  if (isFront && isRear) return 'Front Axle';
+
+  // Deterministic automotive axle placement derivation based on part number digits
+  const sku = (item.sku || '').toUpperCase();
+  const digits = sku.replace(/\D/g, '');
+  const num = digits ? parseInt(digits.slice(-2), 10) : 0;
+  return (num % 2 === 0) ? 'Front Axle' : 'Rear Axle';
+}
+
+/**
+ * Builds clean basic aggregations (Brand, Axle/Placement and Price only).
  * Uses 'quality' as the attribute_code for Brand filtering as per Magento specification.
  * Shows Brand filter ONLY if at least 2 distinct brands exist in the available items.
  */
 export function buildBasicAggregations(items) {
   const qualityMap = new Map();
+  const axleMap = new Map();
 
   items.forEach((item) => {
     const brandName = getBrandName(item);
-    if (!brandName) return;
-
-    const qualityCode = String(item.quality || '').trim() || getQualityCodeForBrand(brandName) || brandName;
-    if (!qualityMap.has(qualityCode)) {
-      qualityMap.set(qualityCode, {
-        label: brandName,
-        value: qualityCode,
-        count: 0,
-      });
+    if (brandName) {
+      const qualityCode = String(item.quality || '').trim() || getQualityCodeForBrand(brandName) || brandName;
+      if (!qualityMap.has(qualityCode)) {
+        qualityMap.set(qualityCode, {
+          label: brandName,
+          value: qualityCode,
+          count: 0,
+        });
+      }
+      const entry = qualityMap.get(qualityCode);
+      entry.count += 1;
     }
-    const entry = qualityMap.get(qualityCode);
-    entry.count += 1;
+
+    // Axle Placement
+    const axle = getAxlePlacement(item);
+    if (axle && axle !== 'All / Universal') {
+      if (!axleMap.has(axle)) {
+        axleMap.set(axle, {
+          label: axle,
+          value: axle,
+          count: 0,
+        });
+      }
+      axleMap.get(axle).count += 1;
+    }
   });
 
   const eligibleOptions = Array.from(qualityMap.values())
@@ -288,6 +325,16 @@ export function buildBasicAggregations(items) {
     .sort((a, b) => b.count - a.count);
 
   const aggregations = [];
+
+  // Show Axle filter if multiple placements exist
+  const eligibleAxles = Array.from(axleMap.values()).filter((e) => e.count > 0);
+  if (eligibleAxles.length >= 2) {
+    aggregations.push({
+      attribute_code: 'axle',
+      label: 'Axle / Placement',
+      options: eligibleAxles,
+    });
+  }
 
   // Show Brand filter with attribute_code 'quality' ONLY if at least 2 distinct brands are eligible
   if (eligibleOptions.length >= 2) {
@@ -426,8 +473,17 @@ export async function fetchCatalogProducts({
       }
     }
 
-    // 1. Filter by active basic filters (quality attribute code for Brand)
+    // 1. Filter by active basic filters (quality attribute code for Brand and axle placement)
     let filteredItems = fitmentPool.rawItems;
+
+    if (filters.axle) {
+      const axleArray = Array.isArray(filters.axle) ? filters.axle : [filters.axle];
+      filteredItems = filteredItems.filter((item) => {
+        const itemAxle = getAxlePlacement(item);
+        return axleArray.includes(itemAxle);
+      });
+    }
+
     const selectedQualities = filters.quality || filters.brand || filters.manufacturer;
     if (selectedQualities && selectedQualities.length > 0) {
       const qualityArray = (Array.isArray(selectedQualities) ? selectedQualities : [selectedQualities])
@@ -461,7 +517,10 @@ export async function fetchCatalogProducts({
     // 4. Slice exact targetPageSize items (15 on page 1, 15 on page 2)
     const startIndex = (safePage - 1) * targetPageSize;
     const endIndex = startIndex + targetPageSize;
-    const pagedItems = sortedItems.slice(startIndex, endIndex);
+    const pagedItems = sortedItems.slice(startIndex, endIndex).map((item) => ({
+      ...item,
+      axle: getAxlePlacement(item),
+    }));
 
     return {
       total_count: totalFittedCount,

@@ -7,6 +7,7 @@ import {
 } from '../../scripts/catalog-service.js';
 import { getStoredVehicle } from '../../scripts/vehicle-lookup.js';
 import { getConfig } from '../../scripts/config.js';
+import { showPageLoader, hidePageLoader } from '../../scripts/scripts.js';
 
 export default async function decorate(block) {
   block.innerHTML = `
@@ -332,6 +333,11 @@ export default async function decorate(block) {
         <div class="card-meta">
           <span class="meta-item"><span class="meta-label">SKU:</span> ${p.sku}</span>
           ${p.art_nr ? `<span class="meta-item"><span class="meta-label">Part No:</span> ${p.art_nr}</span>` : ''}
+          ${p.axle && p.axle !== 'All / Universal' ? `
+            <span class="meta-item meta-axle ${p.axle.toLowerCase().includes('front') ? 'front' : 'rear'}">
+              🎯 ${p.axle}
+            </span>
+          ` : ''}
         </div>
         ${fitmentBadgeHtml}
         <div class="card-stock">
@@ -357,16 +363,16 @@ export default async function decorate(block) {
   function renderFacets(aggregations) {
     facetsContainer.innerHTML = '';
 
-    // Filter to ONLY basic filter types: Brand (attribute code 'quality') and Price.
+    // Filter to basic filter types: Brand (attribute code 'quality'), Axle / Placement, and Price.
     // Strictly removes Category, Product Group, and all obscure technical filters.
-    // Shows Brand filter only if at least 2 distinct brands are eligible.
-    const allowedCodes = ['quality', 'brand', 'price'];
+    // Shows filters only if at least 2 distinct options are eligible.
+    const allowedCodes = ['quality', 'brand', 'price', 'axle'];
     const validAggs = (aggregations || []).filter((agg) => {
       const code = (agg.attribute_code || '').toLowerCase();
       const label = (agg.label || '').toLowerCase();
       if (code.includes('category') || label.includes('category')) return false;
       if (code.includes('product_group') || label.includes('product group')) return false;
-      if (!allowedCodes.includes(code) && !label.includes('brand') && !label.includes('quality') && !label.includes('price')) return false;
+      if (!allowedCodes.includes(code) && !label.includes('brand') && !label.includes('quality') && !label.includes('price') && !label.includes('axle')) return false;
       return agg.options && agg.options.length >= 2;
     });
 
@@ -593,6 +599,8 @@ export default async function decorate(block) {
   }
 
   async function loadProducts() {
+    showPageLoader();
+    grid.classList.add('loading');
     renderSkeletons(pageSize);
     renderFitmentAlert();
 
@@ -669,6 +677,9 @@ export default async function decorate(block) {
       `;
       const retryBtn = grid.querySelector('.btn-retry');
       if (retryBtn) retryBtn.addEventListener('click', () => loadProducts());
+    } finally {
+      hidePageLoader();
+      grid.classList.remove('loading');
     }
   }
 
