@@ -382,7 +382,7 @@ export async function fetchProductBySku(sku) {
 
 /**
  * REST: VRM Vehicle Details Lookup
- * Uses https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vrmdetails?vrm={vrm}
+ * Uses https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/vrmdetails?vrm={vrm}
  */
 export async function fetchVrmDetails(vrm) {
   const normVrm = (vrm || '').trim().toUpperCase().replace(/\s+/g, '');

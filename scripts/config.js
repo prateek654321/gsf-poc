@@ -7,12 +7,12 @@ import { getMetadata } from './aem.js';
  */
 const DEFAULT_CONFIG = {
   magentoGraphqlEndpoint: 'https://mcstaging.gsfcarparts.com/graphql',
-  vrmDetailsEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vrmdetails',
-  fitmentSkusEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/skus',
-  vehicleCompatibilityEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vehiclecompatibility',
-  manufacturersEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/manufacturers',
-  modelsEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/models',
-  vehicleMetadataEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vehiclemetadata',
+  vrmDetailsEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/vrmdetails',
+  fitmentSkusEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/skus',
+  vehicleCompatibilityEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/vehiclecompatibility',
+  manufacturersEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/manufacturers',
+  modelsEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/models',
+  vehicleMetadataEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/vehiclemetadata',
   catalogApiEndpoint: '', // Destination for future Adobe App Builder + API Mesh endpoint
   placeholderImage: 'https://mcstaging.gsfcarparts.com/media/catalog/product/placeholder/default/product_placeholder_2.png',
   specialCoupon: 'PARTS30',
@@ -25,9 +25,10 @@ let activeConfig = null;
 
 /**
  * Returns configuration adhering to EDS standards:
- * 1. Checks EDS HTML <meta name="..."> tags in document head
- * 2. Checks window.CONFIG or window.ENV
- * 3. Falls back to DEFAULT_CONFIG
+ * 1. Checks dynamically loaded window.CONFIG from /config.json (Single Source of Truth)
+ * 2. Checks EDS HTML <meta name="..."> tags in document head
+ * 3. Checks window.ENV
+ * 4. Falls back to DEFAULT_CONFIG
  *
  * @returns {typeof DEFAULT_CONFIG}
  */
@@ -35,62 +36,62 @@ export function getConfig() {
   if (activeConfig) return activeConfig;
 
   activeConfig = {
-    magentoGraphqlEndpoint: getMetadata('magento-graphql-endpoint')
-      || window.CONFIG?.magentoGraphqlEndpoint
+    magentoGraphqlEndpoint: window.CONFIG?.magentoGraphqlEndpoint
+      || getMetadata('magento-graphql-endpoint')
       || window.ENV?.MAGENTO_GRAPHQL_ENDPOINT
       || DEFAULT_CONFIG.magentoGraphqlEndpoint,
 
-    vrmDetailsEndpoint: getMetadata('vrm-details-endpoint')
-      || window.CONFIG?.vrmDetailsEndpoint
+    vrmDetailsEndpoint: window.CONFIG?.vrmDetailsEndpoint
+      || getMetadata('vrm-details-endpoint')
       || window.ENV?.VRM_DETAILS_ENDPOINT
       || DEFAULT_CONFIG.vrmDetailsEndpoint,
 
-    fitmentSkusEndpoint: getMetadata('fitment-skus-endpoint')
-      || window.CONFIG?.fitmentSkusEndpoint
+    fitmentSkusEndpoint: window.CONFIG?.fitmentSkusEndpoint
+      || getMetadata('fitment-skus-endpoint')
       || window.ENV?.FITMENT_SKUS_ENDPOINT
       || DEFAULT_CONFIG.fitmentSkusEndpoint,
 
-    vehicleCompatibilityEndpoint: getMetadata('vehicle-compatibility-endpoint')
-      || window.CONFIG?.vehicleCompatibilityEndpoint
+    vehicleCompatibilityEndpoint: window.CONFIG?.vehicleCompatibilityEndpoint
+      || getMetadata('vehicle-compatibility-endpoint')
       || window.ENV?.VEHICLE_COMPATIBILITY_ENDPOINT
       || DEFAULT_CONFIG.vehicleCompatibilityEndpoint,
 
-    manufacturersEndpoint: getMetadata('manufacturers-endpoint')
-      || window.CONFIG?.manufacturersEndpoint
+    manufacturersEndpoint: window.CONFIG?.manufacturersEndpoint
+      || getMetadata('manufacturers-endpoint')
       || window.ENV?.MANUFACTURERS_ENDPOINT
       || DEFAULT_CONFIG.manufacturersEndpoint,
 
-    modelsEndpoint: getMetadata('models-endpoint')
-      || window.CONFIG?.modelsEndpoint
+    modelsEndpoint: window.CONFIG?.modelsEndpoint
+      || getMetadata('models-endpoint')
       || window.ENV?.MODELS_ENDPOINT
       || DEFAULT_CONFIG.modelsEndpoint,
 
-    vehicleMetadataEndpoint: getMetadata('vehicle-metadata-endpoint')
-      || window.CONFIG?.vehicleMetadataEndpoint
+    vehicleMetadataEndpoint: window.CONFIG?.vehicleMetadataEndpoint
+      || getMetadata('vehicle-metadata-endpoint')
       || window.ENV?.VEHICLE_METADATA_ENDPOINT
       || DEFAULT_CONFIG.vehicleMetadataEndpoint,
 
-    catalogApiEndpoint: getMetadata('catalog-api-endpoint')
-      || window.CONFIG?.catalogApiEndpoint
+    catalogApiEndpoint: window.CONFIG?.catalogApiEndpoint
+      || getMetadata('catalog-api-endpoint')
       || window.ENV?.CATALOG_API_ENDPOINT
       || DEFAULT_CONFIG.catalogApiEndpoint,
 
-    placeholderImage: getMetadata('placeholder-image')
-      || window.CONFIG?.placeholderImage
+    placeholderImage: window.CONFIG?.placeholderImage
+      || getMetadata('placeholder-image')
       || DEFAULT_CONFIG.placeholderImage,
 
-    specialCoupon: getMetadata('special-coupon')
-      || window.CONFIG?.specialCoupon
+    specialCoupon: window.CONFIG?.specialCoupon
+      || getMetadata('special-coupon')
       || window.ENV?.SPECIAL_COUPON
       || DEFAULT_CONFIG.specialCoupon,
 
-    storeCode: getMetadata('store-code')
-      || window.CONFIG?.storeCode
+    storeCode: window.CONFIG?.storeCode
+      || getMetadata('store-code')
       || window.ENV?.STORE_CODE
       || DEFAULT_CONFIG.storeCode,
 
-    pageSizeDefault: parseInt(getMetadata('page-size-default'), 10)
-      || window.CONFIG?.pageSizeDefault
+    pageSizeDefault: window.CONFIG?.pageSizeDefault
+      || parseInt(getMetadata('page-size-default'), 10)
       || DEFAULT_CONFIG.pageSizeDefault,
 
     pageSizeOptions: window.CONFIG?.pageSizeOptions

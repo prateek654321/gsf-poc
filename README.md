@@ -7,9 +7,9 @@ A lightweight, high-performance storefront built on Adobe Experience Manager (AE
 ## Key Features
 
 1. **Direct Magento GraphQL Integration**:
-   - Uses `https://gsf-carparts-staging.agilecollab.com/graphql`.
+   - Uses `https://mcstaging.gsfcarparts.com/graphql`.
    - Fetches live categories dynamically for the top navigation menu.
-   - Executes the custom `ProductFilterEngineOil` query with `specialCoupon: "GSF22"`, fragments, filtering, sorting, and pagination.
+   - Executes the custom queries with `specialCoupon: "PARTS30"`, fragments, filtering, sorting, and pagination.
 
 2. **Full Vehicle Registration (VRM) Fitment Flow**:
    - Present at the top of Homepage, Product List Page (PLP), and Product Details Page (PDP).
