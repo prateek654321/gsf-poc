@@ -322,30 +322,17 @@ export function getItemCategoryName(item) {
 }
 
 /**
- * Builds clean basic aggregations (Category, Axle/Placement, and Brand).
- * Uses 'category_filter' for Category, 'quality' for Brand, and 'axle' for Placement.
+ * Builds clean basic aggregations (Axle/Placement and Brand).
+ * Uses 'quality' for Brand and 'axle' for Placement.
+ * Category navigation is handled via inner subcategories and breadcrumbs.
  * Shows filters ONLY if at least 2 distinct options exist in the candidate items.
  */
 export function buildBasicAggregations(items) {
-  const categoryMap = new Map();
   const qualityMap = new Map();
   const axleMap = new Map();
 
   items.forEach((item) => {
-    // 1. Category facet
-    const catName = getItemCategoryName(item);
-    if (catName) {
-      if (!categoryMap.has(catName)) {
-        categoryMap.set(catName, {
-          label: catName,
-          value: catName,
-          count: 0,
-        });
-      }
-      categoryMap.get(catName).count += 1;
-    }
-
-    // 2. Brand facet
+    // 1. Brand facet
     const brandName = getBrandName(item);
     if (brandName) {
       const qualityCode = String(item.quality || '').trim() || getQualityCodeForBrand(brandName) || brandName;
@@ -360,7 +347,7 @@ export function buildBasicAggregations(items) {
       entry.count += 1;
     }
 
-    // 3. Axle Placement
+    // 2. Axle Placement
     const axle = getAxlePlacement(item);
     if (axle && axle !== 'All / Universal') {
       if (!axleMap.has(axle)) {
@@ -375,19 +362,6 @@ export function buildBasicAggregations(items) {
   });
 
   const aggregations = [];
-
-  // Show Category filter if at least 2 distinct categories exist
-  const eligibleCategories = Array.from(categoryMap.values())
-    .filter((entry) => entry.count > 0)
-    .sort((a, b) => b.count - a.count);
-
-  if (eligibleCategories.length >= 2) {
-    aggregations.push({
-      attribute_code: 'category_filter',
-      label: 'Category',
-      options: eligibleCategories,
-    });
-  }
 
   // Show Axle filter if multiple placements exist
   const eligibleAxles = Array.from(axleMap.values()).filter((e) => e.count > 0);

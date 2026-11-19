@@ -286,25 +286,33 @@ export function getCategoryTargets(categoryId = '', categoryName = '') {
 }
 
 /**
- * Full 3-Level Category Hierarchy Metadata (Level 1 Parent -> Level 2 Subcategory -> Level 3 Leaf)
+ * Full 3-Level Category Hierarchy Metadata (Level 1 Department -> Level 2 Subcategory -> Level 3 Leaf)
+ * Used to render subcategory cards on parent categories (Level 1 & 2),
+ * and only display product listings on the leaf categories (Level 3).
  */
 export const CATEGORY_HIERARCHY_TREE = [
   {
     id: 5461,
     name: 'Braking',
     level: 1,
+    icon: '🛑',
+    tag: 'Guaranteed Fit',
+    desc: 'High performance brake pads, coated discs, calipers, hydraulics and shoes.',
     children: [
       {
         id: 5464,
         name: 'Brake Pads & Discs',
         level: 2,
         parentId: 5461,
+        icon: '🛑',
+        tag: 'Bestseller',
+        desc: 'Replacement front and rear brake pads, discs, wear sensors and fitting kits.',
         children: [
-          { id: 5467, name: 'Brake Pads', compId: '816', level: 3, parentId: 5464 },
-          { id: 5470, name: 'Brake Discs', compId: '871', level: 3, parentId: 5464 },
-          { id: 5473, name: 'Brake Pad Wear Sensor', compId: '817', level: 3, parentId: 5464 },
-          { id: 5476, name: 'Brake Pad Fitting Kit', compId: '902', level: 3, parentId: 5464 },
-          { id: 5479, name: 'Brake Pad & Disc Kit', compId: '15654', level: 3, parentId: 5464 },
+          { id: 5467, name: 'Brake Pads', compId: '816', level: 3, parentId: 5464, icon: '🛑', tag: 'Guaranteed Fit', desc: 'Front & rear brake pads engineered for maximum stopping power and low dust.' },
+          { id: 5470, name: 'Brake Discs', compId: '871', level: 3, parentId: 5464, icon: '💿', tag: 'Anti-Corrosion', desc: 'Vented, solid, and coated brake discs for OE fitment and long service life.' },
+          { id: 5473, name: 'Brake Pad Wear Sensor', compId: '817', level: 3, parentId: 5464, icon: '🔌', tag: 'Direct Fit', desc: 'Electronic brake pad wear warning sensors for front and rear axles.' },
+          { id: 5476, name: 'Brake Pad Fitting Kit', compId: '902', level: 3, parentId: 5464, icon: '🧰', tag: 'Hardware Kit', desc: 'Caliper guide pins, anti-rattle clips, and retaining springs.' },
+          { id: 5479, name: 'Brake Pad & Disc Kit', compId: '15654', level: 3, parentId: 5464, icon: '📦', tag: 'Complete Kit', desc: 'Combined axle sets of matched brake pads and discs.' },
         ],
       },
       {
@@ -312,10 +320,13 @@ export const CATEGORY_HIERARCHY_TREE = [
         name: 'Brake Shoes & Drums',
         level: 2,
         parentId: 5461,
+        icon: '🛞',
+        tag: 'Rear Axle',
+        desc: 'Drum brake shoes, cast drums, wheel cylinders and handbrake shoes.',
         children: [
-          { id: 5497, name: 'Brake Shoes', compId: '12044', level: 3, parentId: 5494 },
-          { id: 5500, name: 'Brake Drums', compId: '957', level: 3, parentId: 5494 },
-          { id: 5506, name: 'Handbrake Shoes', compId: '15661', level: 3, parentId: 5494 },
+          { id: 5497, name: 'Brake Shoes', compId: '12044', level: 3, parentId: 5494, icon: '🛞', tag: 'OE Fit', desc: 'High friction rear brake shoes for drum brake assemblies.' },
+          { id: 5500, name: 'Brake Drums', compId: '957', level: 3, parentId: 5494, icon: '🥁', tag: 'Balanced Cast', desc: 'Precision balanced brake drums for smooth rear braking.' },
+          { id: 5506, name: 'Handbrake Shoes', compId: '15661', level: 3, parentId: 5494, icon: '🅿️', tag: 'Parking Brake', desc: 'Internal parking and handbrake shoes for disc/drum setups.' },
         ],
       },
       {
@@ -323,11 +334,26 @@ export const CATEGORY_HIERARCHY_TREE = [
         name: 'Brake Hydraulics',
         level: 2,
         parentId: 5461,
+        icon: '🗜️',
+        tag: 'Hydraulics',
+        desc: 'Brake calipers, rebuild kits, hydraulic brake hoses and master cylinders.',
         children: [
-          { id: 5524, name: 'Brake Caliper', compId: '814', level: 3, parentId: 5521 },
-          { id: 5527, name: 'Brake Caliper Repair Kit', compId: '872', level: 3, parentId: 5521 },
-          { id: 5545, name: 'Brake Hose', compId: '963', level: 3, parentId: 5521 },
-          { id: 5548, name: 'Brake Master Cylinder', compId: '967', level: 3, parentId: 5521 },
+          { id: 5524, name: 'Brake Caliper', compId: '814', level: 3, parentId: 5521, icon: '🗜️', tag: 'Brand New', desc: 'Single and multi-piston brake calipers for front and rear axles.' },
+          { id: 5527, name: 'Brake Caliper Repair Kit', compId: '872', level: 3, parentId: 5521, icon: '🔧', tag: 'Seals & Pistons', desc: 'Piston seals, dust boots, and guide sleeve repair kits.' },
+          { id: 5545, name: 'Brake Hose', compId: '963', level: 3, parentId: 5521, icon: '〰️', tag: 'Flexible Hose', desc: 'Reinforced flexible rubber and braided hydraulic brake lines.' },
+          { id: 5548, name: 'Brake Master Cylinder', compId: '967', level: 3, parentId: 5521, icon: '⚙️', tag: 'Tandem Cylinder', desc: 'Primary hydraulic brake master cylinders and fluid reservoirs.' },
+        ],
+      },
+      {
+        id: 5578,
+        name: 'Brake Cables',
+        level: 2,
+        parentId: 5461,
+        icon: '⛓️',
+        tag: 'Mechanical',
+        desc: 'Handbrake cables, front/rear parking brake tension cables.',
+        children: [
+          { id: 5581, name: 'Handbrake Cable', compId: '838', level: 3, parentId: 5578, icon: '⛓️', tag: 'Tension Cable', desc: 'Sheathed parking brake control cables for rear brakes.' },
         ],
       },
       {
@@ -335,9 +361,12 @@ export const CATEGORY_HIERARCHY_TREE = [
         name: 'Brake Electrical',
         level: 2,
         parentId: 5461,
+        icon: '⚡',
+        tag: 'ABS & Sensors',
+        desc: 'ABS wheel speed sensors, reluctor rings and brake pedal switches.',
         children: [
-          { id: 5587, name: 'Brake Light Switch', compId: '815', level: 3, parentId: 5584 },
-          { id: 8697, name: 'ABS Ring', compId: '868', level: 3, parentId: 5584 },
+          { id: 5587, name: 'Brake Light Switch', compId: '815', level: 3, parentId: 5584, icon: '💡', tag: 'Pedal Switch', desc: 'Stop lamp activation switches mounted at the brake pedal.' },
+          { id: 8697, name: 'ABS Ring', compId: '868', level: 3, parentId: 5584, icon: '🛞', tag: 'Reluctor Ring', desc: 'Precision magnetic and toothed ABS wheel speed reluctor rings.' },
         ],
       },
     ],
@@ -346,17 +375,23 @@ export const CATEGORY_HIERARCHY_TREE = [
     id: 5278,
     name: 'Service Parts',
     level: 1,
+    icon: '🔧',
+    tag: 'Routine Service',
+    desc: 'Oil, air, fuel and pollen filters, premium lubricants, spark plugs and wiper blades.',
     children: [
       {
         id: 5281,
         name: 'Filters',
         level: 2,
         parentId: 5278,
+        icon: '🔧',
+        tag: 'Service Kit',
+        desc: 'Engine oil filters, engine air filters, cabin pollen filters, and fuel filters.',
         children: [
-          { id: 5284, name: 'Oil Filter', compId: '844', level: 3, parentId: 5281 },
-          { id: 5287, name: 'Air Filter', compId: '804', level: 3, parentId: 5281 },
-          { id: 5293, name: 'Cabin Filter', compId: '819', level: 3, parentId: 5281 },
-          { id: 5290, name: 'Fuel Filter', compId: '803', level: 3, parentId: 5281 },
+          { id: 5284, name: 'Oil Filter', compId: '844', level: 3, parentId: 5281, icon: '🛢️', tag: 'Spin-on & Element', desc: 'High efficiency oil filter inserts and spin-on canisters.' },
+          { id: 5287, name: 'Air Filter', compId: '804', level: 3, parentId: 5281, icon: '💨', tag: 'High Flow', desc: 'Pleated engine intake air filters for optimal fuel economy.' },
+          { id: 5293, name: 'Cabin Filter', compId: '819', level: 3, parentId: 5281, icon: '🍃', tag: 'Active Carbon', desc: 'Pollen and allergen cabin air filters for clean interior air.' },
+          { id: 5290, name: 'Fuel Filter', compId: '803', level: 3, parentId: 5281, icon: '⛽', tag: 'Inline Filter', desc: 'Diesel and petrol fuel filters protecting injectors and pumps.' },
         ],
       },
       {
@@ -364,11 +399,14 @@ export const CATEGORY_HIERARCHY_TREE = [
         name: 'Lubricants & Fluids',
         level: 2,
         parentId: 5278,
+        icon: '🛢️',
+        tag: 'Approved Specs',
+        desc: 'Fully synthetic engine oils (5W-30, 0W-20), coolant, brake fluid and screenwash.',
         children: [
-          { id: 5323, name: 'Engine Oil', compId: '17048', level: 3, parentId: 5320 },
-          { id: 5326, name: 'Antifreeze & Coolant', compId: '808', level: 3, parentId: 5320 },
-          { id: 5329, name: 'Brake Fluid', compId: '22393', level: 3, parentId: 5320 },
-          { id: 5332, name: 'Screen Wash', compId: '22394', level: 3, parentId: 5320 },
+          { id: 5323, name: 'Engine Oil', compId: '17048', level: 3, parentId: 5320, icon: '🛢️', tag: 'Manufacturer Spec', desc: '5W-30, 5W-40, 0W-20 and 0W-30 fully synthetic motor oils.' },
+          { id: 5326, name: 'Antifreeze & Coolant', compId: '808', level: 3, parentId: 5320, icon: '❄️', tag: 'G12 / G13 / OAT', desc: 'Engine cooling system antifreeze and pre-mixed coolants.' },
+          { id: 5329, name: 'Brake Fluid', compId: '22393', level: 3, parentId: 5320, icon: '💧', tag: 'DOT 4 & DOT 5.1', desc: 'High boiling point synthetic hydraulic brake and clutch fluids.' },
+          { id: 5332, name: 'Screen Wash', compId: '22394', level: 3, parentId: 5320, icon: '🚿', tag: 'All Season', desc: 'Concentrated and ready-to-use windscreen washer fluid.' },
         ],
       },
       {
@@ -376,9 +414,24 @@ export const CATEGORY_HIERARCHY_TREE = [
         name: 'Plugs',
         level: 2,
         parentId: 5278,
+        icon: '⚡',
+        tag: 'Ignition',
+        desc: 'Iridium and platinum spark plugs, ceramic diesel glow plugs.',
         children: [
-          { id: 5362, name: 'Spark Plugs', compId: '854', level: 3, parentId: 5359 },
-          { id: 5365, name: 'Glow Plug', compId: '949', level: 3, parentId: 5359 },
+          { id: 5362, name: 'Spark Plugs', compId: '854', level: 3, parentId: 5359, icon: '⚡', tag: 'Iridium & Laser', desc: 'Petrol engine spark plugs from NGK, Bosch, and Denso.' },
+          { id: 5365, name: 'Glow Plug', compId: '949', level: 3, parentId: 5359, icon: '💡', tag: 'Quick Start', desc: 'Diesel cold-start pre-heating glow plugs.' },
+        ],
+      },
+      {
+        id: 5368,
+        name: 'Timing Belts',
+        level: 2,
+        parentId: 5278,
+        icon: '🔄',
+        tag: 'Engine Timing',
+        desc: 'Camshaft timing belts, tensioner pulleys, and complete water pump kits.',
+        children: [
+          { id: 5371, name: 'Timing Belt', compId: '873', level: 3, parentId: 5368, icon: '🔄', tag: 'Reinforced', desc: 'Heavy duty synchronous toothed camshaft drive belts.' },
         ],
       },
       {
@@ -386,8 +439,85 @@ export const CATEGORY_HIERARCHY_TREE = [
         name: 'Wiper Blades',
         level: 2,
         parentId: 5278,
+        icon: '🌧️',
+        tag: 'Clear Vision',
+        desc: 'Flat aero beam blades, conventional wiper blades, and rear screen blades.',
         children: [
-          { id: 5392, name: 'Wiper Blades', compId: '867', level: 3, parentId: 5389 },
+          { id: 5392, name: 'Wiper Blades', compId: '867', level: 3, parentId: 5389, icon: '🌧️', tag: 'Aero Beam', desc: 'Direct-fit front driver, passenger and rear wiper blades.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 5590,
+    name: 'Steering & Suspension',
+    level: 1,
+    icon: '🏎️',
+    tag: 'Chassis & Handling',
+    desc: 'Gas shock absorbers, coil springs, control arms, anti-roll links, and steering racks.',
+    children: [
+      {
+        id: 5593,
+        name: 'Shocks & Components',
+        level: 2,
+        parentId: 5590,
+        icon: '⚙️',
+        tag: 'Ride Comfort',
+        desc: 'Gas-pressurised shock absorbers, strut cartridges, and top mounts.',
+        children: [
+          { id: 5596, name: 'Shock Absorber', compId: '870', level: 3, parentId: 5593, icon: '⚙️', tag: 'Gas Strut', desc: 'Front strut units and rear shock absorbers.' },
+          { id: 5602, name: 'Strut Top Mount', compId: '21835', level: 3, parentId: 5593, icon: '🔘', tag: 'Top Bearing', desc: 'Upper suspension strut mounts and bearings.' },
+        ],
+      },
+      {
+        id: 5614,
+        name: 'Springs & Parts',
+        level: 2,
+        parentId: 5590,
+        icon: '🌀',
+        tag: 'Suspension',
+        desc: 'Axle coil springs, suspension bump stops and dust protection kits.',
+        children: [
+          { id: 5617, name: 'Coil Springs', compId: '21836', level: 3, parentId: 5614, icon: '🌀', tag: 'Matched Pair', desc: 'Standard and sport ride height helical suspension coil springs.' },
+        ],
+      },
+      {
+        id: 5629,
+        name: 'Suspension Parts',
+        level: 2,
+        parentId: 5590,
+        icon: '🔗',
+        tag: 'Linkages',
+        desc: 'Track control arms, wishbones, anti-roll bar drop links, and ball joints.',
+        children: [
+          { id: 5632, name: 'Track Control Arm', compId: '857', level: 3, parentId: 5629, icon: '🔗', tag: 'Wishbone', desc: 'Lower and upper front suspension wishbones and bushings.' },
+          { id: 5638, name: 'Anti Roll Bar Link', compId: '12065', level: 3, parentId: 5629, icon: '🦯', tag: 'Drop Link', desc: 'Stabiliser anti-roll bar connecting drop links.' },
+          { id: 5644, name: 'Ball Joint', compId: '21838', level: 3, parentId: 5629, icon: '⚪', tag: 'Swivel Joint', desc: 'Lower suspension swivel ball joints.' },
+        ],
+      },
+      {
+        id: 5668,
+        name: 'Steering Parts',
+        level: 2,
+        parentId: 5590,
+        icon: '🧭',
+        tag: 'Steering',
+        desc: 'Tie rod track rod ends, inner tie rods, and steering rack gaiters.',
+        children: [
+          { id: 5671, name: 'Tie Rod End', compId: '12112', level: 3, parentId: 5668, icon: '🧭', tag: 'Track Rod End', desc: 'Outer steering track rod ends for wheel alignment.' },
+          { id: 5674, name: 'Tie Rod Assembly', compId: '50000', level: 3, parentId: 5668, icon: '🦯', tag: 'Axial Rod', desc: 'Complete steering tie rod rack ends and boots.' },
+        ],
+      },
+      {
+        id: 5692,
+        name: 'Steering Rack',
+        level: 2,
+        parentId: 5590,
+        icon: '🕹️',
+        tag: 'Steering Gear',
+        desc: 'Manual and hydraulic/electric power-assisted steering gearboxes.',
+        children: [
+          { id: 5695, name: 'Steering Rack', compId: '50001', level: 3, parentId: 5692, icon: '🕹️', tag: 'Power Steering', desc: 'Remanufactured and brand new power steering gear racks.' },
         ],
       },
     ],
@@ -396,14 +526,20 @@ export const CATEGORY_HIERARCHY_TREE = [
     id: 5986,
     name: 'Electrical',
     level: 1,
+    icon: '⚡',
+    tag: '12V Power & Sensors',
+    desc: 'Car batteries (EFB, AGM, standard lead acid), alternators, starter motors, and engine sensors.',
     children: [
       {
-        id: 5992,
+        id: 5989,
         name: 'Batteries',
         level: 2,
         parentId: 5986,
+        icon: '🔋',
+        tag: 'Stop/Start Ready',
+        desc: '096, 027, 067 and AGM automotive 12V starter batteries with 3–5 year warranties.',
         children: [
-          { id: 5992, name: 'Car Battery', compId: '810', level: 3, parentId: 5992 },
+          { id: 5992, name: 'Car Battery', compId: '810', level: 3, parentId: 5989, icon: '🔋', tag: 'Yuasa / Exide', desc: 'High cold cranking amp 12V car and van batteries.' },
         ],
       },
       {
@@ -411,8 +547,95 @@ export const CATEGORY_HIERARCHY_TREE = [
         name: 'Sensors',
         level: 2,
         parentId: 5986,
+        icon: '📡',
+        tag: 'Engine Management',
+        desc: 'Mass air flow sensors, lambda oxygen sensors, crankshaft and camshaft position sensors.',
         children: [
-          { id: 6049, name: 'MAF Sensor', compId: '805', level: 3, parentId: 6019 },
+          { id: 6049, name: 'MAF Sensor', compId: '805', level: 3, parentId: 6019, icon: '💨', tag: 'Air Mass', desc: 'Precision mass airflow intake sensors.' },
+          { id: 6025, name: 'Lambda Sensor', compId: '12093', level: 3, parentId: 6019, icon: '🔥', tag: 'Oxygen Sensor', desc: 'Pre and post-cat exhaust gas oxygen lambda sensors.' },
+          { id: 6031, name: 'Crankshaft Sensor', compId: '15598', level: 3, parentId: 6019, icon: '🔄', tag: 'RPM Sensor', desc: 'Engine speed and crankshaft position pulse generators.' },
+        ],
+      },
+      {
+        id: 6001,
+        name: 'Alternator',
+        level: 2,
+        parentId: 5986,
+        icon: '⚡',
+        tag: 'Charging System',
+        desc: '12V high output charging alternators with freewheel pulleys.',
+        children: [
+          { id: 6004, name: 'Alternator', compId: '806', level: 3, parentId: 6001, icon: '⚡', tag: 'OE Reman', desc: 'Brand new and exchange vehicle charging alternators.' },
+        ],
+      },
+      {
+        id: 6013,
+        name: 'Starter System',
+        level: 2,
+        parentId: 5986,
+        icon: '🔑',
+        tag: 'Starting',
+        desc: 'Electric starter motors and solenoids for petrol and diesel engines.',
+        children: [
+          { id: 6016, name: 'Starter Motor', compId: '12114', level: 3, parentId: 6013, icon: '🔑', tag: 'Heavy Duty', desc: 'High torque vehicle starter motors.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 5707,
+    name: 'Engine Parts',
+    level: 1,
+    icon: '⚙️',
+    tag: 'Mechanical',
+    desc: 'Timing belts, drive belts, cylinder heads, engine mountings, sumps and gaskets.',
+    children: [
+      {
+        id: 5710,
+        name: 'Auxilary Drive',
+        level: 2,
+        parentId: 5707,
+        icon: '🔄',
+        tag: 'Serpentine',
+        desc: 'V-ribbed alternator serpentine belts, tensioners, and idler pulleys.',
+        children: [
+          { id: 5713, name: 'Drive Belt', compId: '873', level: 3, parentId: 5710, icon: '🔄', tag: 'Poly-V Belt', desc: 'Multi-ribbed auxiliary alternator and air conditioning belts.' },
+        ],
+      },
+      {
+        id: 5785,
+        name: 'Mountings',
+        level: 2,
+        parentId: 5707,
+        icon: '🛡️',
+        tag: 'Damping',
+        desc: 'Hydro and rubber engine support mounts and transmission bushes.',
+        children: [
+          { id: 5788, name: 'Engine Mount', compId: '15618', level: 3, parentId: 5785, icon: '🛡️', tag: 'Hydro Mount', desc: 'Vibration absorbing engine and gearbox mounts.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 6514,
+    name: 'Cooling & Heating',
+    level: 1,
+    icon: '❄️',
+    tag: 'Thermal',
+    desc: 'Engine radiators, water pumps, thermostats, heater matrices and air conditioning parts.',
+    children: [
+      {
+        id: 6544,
+        name: 'Cooling System',
+        level: 2,
+        parentId: 6514,
+        icon: '❄️',
+        tag: 'Cooling',
+        desc: 'Aluminium coolant radiators, mechanical water pumps, and thermostat housings.',
+        children: [
+          { id: 6547, name: 'Radiator', compId: '808', level: 3, parentId: 6544, icon: '❄️', tag: 'Aluminium Core', desc: 'Engine coolant heat exchanger radiators.' },
+          { id: 6550, name: 'Water Pump', compId: '15586', level: 3, parentId: 6544, icon: '💧', tag: 'Metal Impeller', desc: 'Engine coolant circulation water pumps.' },
+          { id: 6553, name: 'Thermostat', compId: '17029', level: 3, parentId: 6544, icon: '🌡️', tag: 'Regulator', desc: 'Coolant temperature control thermostat valves.' },
         ],
       },
     ],
@@ -420,36 +643,54 @@ export const CATEGORY_HIERARCHY_TREE = [
 ];
 
 /**
- * Resolves 3-level breadcrumb path & subcategory quick-links for any category ID
+ * Resolves 3-level breadcrumb path & subcategories for any category ID or name.
+ * Determines if current selection is a parent category (has children) or a leaf category (no children).
+ *
  * @param {string|number} categoryId
  * @param {string} [categoryName]
- * @returns {{ level: number, current: object, breadcrumbs: Array, subcategories: Array }}
+ * @returns {{
+ *   level: number,
+ *   isLeaf: boolean,
+ *   current: { id: number, name: string, level: number, icon?: string, tag?: string, desc?: string, compId?: string },
+ *   breadcrumbs: Array<{ name: string, href: string }>,
+ *   children: Array<{ id: number, name: string, href: string, icon?: string, tag?: string, desc?: string, compId?: string, hasChildren: boolean }>,
+ *   siblings: Array<{ id: number, name: string, href: string, active?: boolean }>,
+ *   quickLeaves: Array<{ id: number, name: string, href: string }>
+ * }}
  */
 export function getCategoryNavInfo(categoryId = '', categoryName = '') {
   const catIdNum = parseInt(categoryId, 10);
   const nameNorm = (categoryName || '').toLowerCase().trim();
 
-  // Search in hierarchy tree
+  // Search hierarchy tree
   for (const l1 of CATEGORY_HIERARCHY_TREE) {
-    // Matches Level 1
+    // 1. Matches Level 1
     if (l1.id === catIdNum || (nameNorm && l1.name.toLowerCase() === nameNorm)) {
       const allLeaves = [];
-      (l1.children || []).forEach((l2) => {
+      const l2Children = (l1.children || []).map((l2) => {
         (l2.children || []).forEach((l3) => allLeaves.push(l3));
+        return {
+          id: l2.id,
+          name: l2.name,
+          href: `/plp.html?category_id=${l2.id}&category_name=${encodeURIComponent(l2.name)}`,
+          icon: l2.icon || l1.icon || '📦',
+          tag: l2.tag || 'Guaranteed Fit',
+          desc: l2.desc || `Browse all ${l2.name} categories`,
+          hasChildren: Boolean(l2.children && l2.children.length > 0),
+        };
       });
 
       return {
         level: 1,
-        current: { id: l1.id, name: l1.name },
+        isLeaf: false,
+        current: { id: l1.id, name: l1.name, level: 1, icon: l1.icon, tag: l1.tag, desc: l1.desc },
         breadcrumbs: [
           { name: 'Home', href: '/' },
           { name: l1.name, href: `/plp.html?category_id=${l1.id}&category_name=${encodeURIComponent(l1.name)}` },
         ],
-        subcategories: (l1.children || []).map((c) => ({
-          id: c.id,
-          name: c.name,
-          href: `/plp.html?category_id=${c.id}&category_name=${encodeURIComponent(c.name)}`,
-        })),
+        children: l2Children,
+        subcategories: l2Children,
+        siblings: [],
         quickLeaves: allLeaves.slice(0, 6).map((leaf) => ({
           id: leaf.id,
           name: leaf.name,
@@ -458,38 +699,66 @@ export function getCategoryNavInfo(categoryId = '', categoryName = '') {
       };
     }
 
-    // Matches Level 2
+    // 2. Matches Level 2
     for (const l2 of (l1.children || [])) {
       if (l2.id === catIdNum || (nameNorm && l2.name.toLowerCase() === nameNorm)) {
+        const l3Children = (l2.children || []).map((l3) => ({
+          id: l3.id,
+          name: l3.name,
+          href: `/plp.html?category_id=${l3.id}&category_name=${encodeURIComponent(l3.name)}`,
+          icon: l3.icon || l2.icon || '📦',
+          tag: l3.tag || 'Guaranteed Fit',
+          desc: l3.desc || `Shop ${l3.name} for your vehicle`,
+          compId: l3.compId,
+          hasChildren: Boolean(l3.children && l3.children.length > 0),
+        }));
+
+        const isLeaf = l3Children.length === 0;
+
         return {
           level: 2,
-          current: { id: l2.id, name: l2.name },
+          isLeaf,
+          current: { id: l2.id, name: l2.name, level: 2, icon: l2.icon, tag: l2.tag, desc: l2.desc },
           breadcrumbs: [
             { name: 'Home', href: '/' },
             { name: l1.name, href: `/plp.html?category_id=${l1.id}&category_name=${encodeURIComponent(l1.name)}` },
             { name: l2.name, href: `/plp.html?category_id=${l2.id}&category_name=${encodeURIComponent(l2.name)}` },
           ],
-          subcategories: (l2.children || []).map((c) => ({
+          children: l3Children,
+          subcategories: l3Children,
+          siblings: (l1.children || []).map((c) => ({
             id: c.id,
             name: c.name,
             href: `/plp.html?category_id=${c.id}&category_name=${encodeURIComponent(c.name)}`,
+            active: c.id === l2.id,
           })),
         };
       }
 
-      // Matches Level 3
+      // 3. Matches Level 3 (Leaf Category)
       for (const l3 of (l2.children || [])) {
         if (l3.id === catIdNum || (nameNorm && l3.name.toLowerCase() === nameNorm)) {
           return {
             level: 3,
-            current: { id: l3.id, name: l3.name },
+            isLeaf: true,
+            current: {
+              id: l3.id,
+              name: l3.name,
+              level: 3,
+              compId: l3.compId,
+              icon: l3.icon || l2.icon || '📦',
+              tag: l3.tag,
+              desc: l3.desc,
+            },
             breadcrumbs: [
               { name: 'Home', href: '/' },
               { name: l1.name, href: `/plp.html?category_id=${l1.id}&category_name=${encodeURIComponent(l1.name)}` },
               { name: l2.name, href: `/plp.html?category_id=${l2.id}&category_name=${encodeURIComponent(l2.name)}` },
               { name: l3.name, href: `/plp.html?category_id=${l3.id}&category_name=${encodeURIComponent(l3.name)}` },
             ],
-            subcategories: (l2.children || []).map((c) => ({
+            children: [],
+            subcategories: [],
+            siblings: (l2.children || []).map((c) => ({
               id: c.id,
               name: c.name,
               href: `/plp.html?category_id=${c.id}&category_name=${encodeURIComponent(c.name)}`,
@@ -501,16 +770,21 @@ export function getCategoryNavInfo(categoryId = '', categoryName = '') {
     }
   }
 
-  // Fallback if not found in static tree
+  // Fallback: check keywords if parent or leaf
+  const isKnownParent = nameNorm.includes('braking') || nameNorm.includes('service') || nameNorm.includes('steering') || nameNorm.includes('suspension') || nameNorm.includes('electrical');
   const displayName = categoryName || (catIdNum ? `Category ${catIdNum}` : 'All Parts');
+
   return {
-    level: 1,
-    current: { id: catIdNum || 5461, name: displayName },
+    level: isKnownParent ? 1 : 3,
+    isLeaf: !isKnownParent,
+    current: { id: catIdNum || 5461, name: displayName, level: isKnownParent ? 1 : 3 },
     breadcrumbs: [
       { name: 'Home', href: '/' },
       { name: displayName, href: `/plp.html?category_id=${categoryId}&category_name=${encodeURIComponent(displayName)}` },
     ],
+    children: [],
     subcategories: [],
+    siblings: [],
   };
 }
 

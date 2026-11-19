@@ -79,30 +79,31 @@ function renderPdpSkeleton() {
   `;
 }
 
-export default async function decorate(block) {
+export default function decorate(block) {
   // Immediately render complete PDP skeleton layout
   block.innerHTML = renderPdpSkeleton();
 
   const urlParams = new URLSearchParams(window.location.search);
   const sku = urlParams.get('sku') || 'MPRMBP2285';
 
-  let product = null;
-  try {
-    product = await fetchProductBySku(sku);
-  } catch (err) {
-    console.error('Error fetching PDP product:', err);
-  }
+  async function loadPdp() {
+    let product = null;
+    try {
+      product = await fetchProductBySku(sku);
+    } catch (err) {
+      console.error('Error fetching PDP product:', err);
+    }
 
-  if (!product) {
-    block.innerHTML = `
-      <div class="pdp-error">
-        <h2>Product Unavailable</h2>
-        <p>Unable to load product with SKU: <strong>${sku}</strong>.</p>
-        <a href="/plp.html" class="btn btn-primary">Browse All Parts</a>
-      </div>
-    `;
-    return;
-  }
+    if (!product) {
+      block.innerHTML = `
+        <div class="pdp-error">
+          <h2>Product Unavailable</h2>
+          <p>Unable to load product with SKU: <strong>${sku}</strong>.</p>
+          <a href="/plp.html" class="btn btn-primary">Browse All Parts</a>
+        </div>
+      `;
+      return;
+    }
 
   const config = getConfig();
   const minPrice = product.price_range?.minimum_price?.final_price;
@@ -335,15 +336,19 @@ export default async function decorate(block) {
   }
 
   // Initial fitment verification
-  await updateFitmentStatus();
+    await updateFitmentStatus();
 
-  // Listen to global vehicle events
-  window.addEventListener('vehicle-lookup:updated', updateFitmentStatus);
-  window.addEventListener('vehicle-lookup:cleared', updateFitmentStatus);
+    // Listen to global vehicle events
+    window.addEventListener('vehicle-lookup:updated', updateFitmentStatus);
+    window.addEventListener('vehicle-lookup:cleared', updateFitmentStatus);
 
-  // Add to basket alert demo
-  block.querySelector('.btn-add-to-cart')?.addEventListener('click', () => {
-    const qty = block.querySelector('#pdp-qty')?.value || 1;
-    alert(`Added ${qty} × ${product.name} (${product.sku}) to your basket!`);
-  });
+    // Add to basket alert demo
+    block.querySelector('.btn-add-to-cart')?.addEventListener('click', () => {
+      const qty = block.querySelector('#pdp-qty')?.value || 1;
+      alert(`Added ${qty} × ${product.name} (${product.sku}) to your basket!`);
+    });
+  }
+
+  // Trigger non-blocking PDP load so skeleton renders immediately and footer is available
+  loadPdp();
 }

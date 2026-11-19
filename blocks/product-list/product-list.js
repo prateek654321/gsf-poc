@@ -63,6 +63,29 @@ function getProductGridSkeletonsHtml(count = 12) {
   `).join('');
 }
 
+function getSubcategorySkeletonsHtml(count = 6) {
+  return `
+    <div class="subcat-cards-grid skeleton-grid" aria-busy="true" aria-label="Loading subcategories">
+      ${Array.from({ length: count }).map(() => `
+        <div class="subcat-card skeleton-subcat-card">
+          <div class="subcat-card-header">
+            <div class="skeleton-shimmer skeleton-subcat-icon"></div>
+            <div class="skeleton-shimmer skeleton-subcat-tag"></div>
+          </div>
+          <div class="subcat-card-body">
+            <div class="skeleton-shimmer skeleton-subcat-title"></div>
+            <div class="skeleton-shimmer skeleton-subcat-desc-1"></div>
+            <div class="skeleton-shimmer skeleton-subcat-desc-2"></div>
+          </div>
+          <div class="subcat-card-footer">
+            <div class="skeleton-shimmer skeleton-subcat-btn"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 export default async function decorate(block) {
   // Dynamic Configuration & URL state management
   const appConfig = getConfig();
@@ -76,10 +99,13 @@ export default async function decorate(block) {
   let sortDir = 'ASC';
   let activeFilters = {};
 
+  const initialNavInfo = getCategoryNavInfo(categoryId, categoryName);
+  const isInitialLeaf = initialNavInfo.isLeaf || Boolean(searchPhrase) || (!categoryId && !categoryName);
+
   block.innerHTML = `
-    <div class="plp-layout">
-      <!-- Sidebar Filters -->
-      <aside class="plp-sidebar" aria-label="Product Filters">
+    <div class="plp-layout ${!isInitialLeaf ? 'is-subcategory-view' : ''}">
+      <!-- Sidebar Filters (Only for Leaf Categories & Searches) -->
+      <aside class="plp-sidebar" aria-label="Product Filters" ${!isInitialLeaf ? 'style="display:none;"' : ''}>
         <div class="sidebar-header">
           <div class="sidebar-title-box">
             <span class="sidebar-icon">⚙️</span>
@@ -94,19 +120,19 @@ export default async function decorate(block) {
         </div>
       </aside>
 
-      <!-- Main Results Column -->
+      <!-- Main Column -->
       <main class="plp-main">
         <!-- 3-Level Category Breadcrumbs -->
         <nav class="plp-category-breadcrumbs" aria-label="Category Breadcrumbs"></nav>
 
-        <!-- Subcategory Quick Pills Bar -->
+        <!-- Subcategory Quick Pills Bar (Visible on Leaf Categories) -->
         <div class="plp-subcategories-bar" style="display:none;"></div>
 
         <!-- Fitment Banner -->
         <div class="plp-fitment-alert" style="display:none;"></div>
 
         <!-- View Mode Segmented Controls (Vehicle Fit Products vs All Products) -->
-        <div class="plp-view-mode-bar">
+        <div class="plp-view-mode-bar" ${!isInitialLeaf ? 'style="display:none;"' : ''}>
           <div class="view-mode-tabs" role="tablist" aria-label="Catalog View Mode">
             <button type="button" class="view-mode-tab tab-fitted" data-mode="fitted" role="tab" aria-selected="false">
               <span class="tab-icon">✓</span>
@@ -124,8 +150,8 @@ export default async function decorate(block) {
         <!-- Active Filter Pills -->
         <div class="plp-active-filters" style="display:none;"></div>
 
-        <!-- Toolbar: Count, Search & Sort -->
-        <div class="plp-toolbar">
+        <!-- Toolbar: Count, Search & Sort (Only for Leaf Categories) -->
+        <div class="plp-toolbar" ${!isInitialLeaf ? 'style="display:none;"' : ''}>
           <div class="plp-results-count">
             <span class="skeleton-shimmer skeleton-line skeleton-count-shimmer" style="width: 220px; height: 18px; display: inline-block;"></span>
           </div>
@@ -150,9 +176,9 @@ export default async function decorate(block) {
           </div>
         </div>
 
-        <!-- Product Grid -->
+        <!-- Content Grid: Holds either Subcategory Tiles or Product Cards -->
         <div class="plp-grid">
-          ${getProductGridSkeletonsHtml(pageSize)}
+          ${!isInitialLeaf ? getSubcategorySkeletonsHtml(6) : getProductGridSkeletonsHtml(pageSize)}
         </div>
 
         <!-- Pagination -->
@@ -161,6 +187,10 @@ export default async function decorate(block) {
     </div>
   `;
 
+  const plpLayout = block.querySelector('.plp-layout');
+  const sidebar = block.querySelector('.plp-sidebar');
+  const toolbar = block.querySelector('.plp-toolbar');
+  const viewModeBar = block.querySelector('.plp-view-mode-bar');
   const fitmentAlert = block.querySelector('.plp-fitment-alert');
   const tabFitted = block.querySelector('.view-mode-tab.tab-fitted');
   const tabAll = block.querySelector('.view-mode-tab.tab-all');
@@ -225,8 +255,7 @@ export default async function decorate(block) {
     }
   }
 
-  function renderCategoryNavigation() {
-    const navInfo = getCategoryNavInfo(categoryId, categoryName);
+  function renderCategoryNavigation(navInfo) {
     const breadcrumbsEl = block.querySelector('.plp-category-breadcrumbs');
     const subcatsEl = block.querySelector('.plp-subcategories-bar');
     const stored = getStoredVehicle();
@@ -242,13 +271,14 @@ export default async function decorate(block) {
       }).join(' ');
     }
 
-    const availablePills = navInfo?.quickLeaves?.length > 0 ? navInfo.quickLeaves : (navInfo?.subcategories || []);
-    if (subcatsEl && availablePills.length > 0) {
+    // Quick pills bar is shown only on Leaf category pages for quick hopping between siblings
+    const siblings = navInfo?.siblings || [];
+    if (subcatsEl && navInfo.isLeaf && siblings.length > 1) {
       subcatsEl.style.display = 'flex';
       subcatsEl.innerHTML = `
-        <span class="subcat-pills-label">Explore Subcategories:</span>
+        <span class="subcat-pills-label">Related Categories:</span>
         <div class="subcat-pills-list">
-          ${availablePills.map((sub) => {
+          ${siblings.map((sub) => {
             const isActive = String(sub.id) === String(categoryId) || sub.active;
             return `
               <a href="${sub.href}${vrmQuery}" class="subcat-pill ${isActive ? 'active' : ''}">
@@ -261,6 +291,82 @@ export default async function decorate(block) {
     } else if (subcatsEl) {
       subcatsEl.style.display = 'none';
     }
+  }
+
+  /**
+   * Renders the Inner Subcategories Selection View for parent categories (Level 1 & 2)
+   * Matches gsfcarparts.com behavior: parents never list products, but display subcategory tiles.
+   */
+  function renderSubcategorySelectionView(navInfo) {
+    const stored = getStoredVehicle();
+    const vrmQuery = stored.vrm ? `&vrm=${encodeURIComponent(stored.vrm)}` : '';
+    const children = navInfo.children || [];
+    const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
+    const vehicleLabel = isManual
+      ? (stored.summary || `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim())
+      : `${stored.summary || stored.vrm} (${stored.vrm})`;
+
+    // Hide PLP specific elements
+    plpLayout.classList.add('is-subcategory-view');
+    sidebar.style.display = 'none';
+    toolbar.style.display = 'none';
+    viewModeBar.style.display = 'none';
+    pagination.style.display = 'none';
+    activeFiltersBar.style.display = 'none';
+    fitmentAlert.style.display = 'none';
+
+    grid.className = 'subcat-view-container';
+    grid.innerHTML = `
+      <!-- Subcategory Hero Banner -->
+      <div class="subcat-hero">
+        <div class="subcat-hero-top">
+          <span class="subcat-badge">${navInfo.level === 1 ? 'Department' : 'Category'}</span>
+          <span class="subcat-count-pill">${children.length} Subcategories</span>
+        </div>
+        <h1 class="subcat-hero-title">${navInfo.current.name}</h1>
+        <p class="subcat-hero-desc">${navInfo.current.desc || 'Select a subcategory below to view parts guaranteed to fit your vehicle.'}</p>
+      </div>
+
+      <!-- Vehicle Fitment Strip -->
+      ${stored.hasVehicle ? `
+        <div class="subcat-vehicle-banner">
+          <div class="subcat-vehicle-icon">✓</div>
+          <div class="subcat-vehicle-text">
+            <strong>Guaranteed Fitment Active:</strong> Showing ${navInfo.current.name} categories verified to fit your 
+            <strong>${vehicleLabel}</strong>. Select a part type below to view compatible products.
+          </div>
+        </div>
+      ` : `
+        <div class="subcat-vehicle-banner prompt">
+          <div class="subcat-vehicle-icon">🚗</div>
+          <div class="subcat-vehicle-text">
+            <strong>Find parts guaranteed to fit:</strong> Enter your UK registration number above to filter only parts verified for your vehicle.
+          </div>
+        </div>
+      `}
+
+      <!-- Subcategory Cards Grid -->
+      <div class="subcat-cards-grid">
+        ${children.map((c) => `
+          <a href="${c.href}${vrmQuery}" class="subcat-card" title="Browse ${c.name}">
+            <div class="subcat-card-header">
+              <div class="subcat-icon-wrap">
+                <span class="subcat-icon">${c.icon || '📦'}</span>
+              </div>
+              <span class="subcat-pill">${c.tag || 'Guaranteed Fit'}</span>
+            </div>
+            <div class="subcat-card-body">
+              <h3 class="subcat-card-title">${c.name}</h3>
+              <p class="subcat-card-desc">${c.desc || `Browse genuine and OEM ${c.name} parts`}</p>
+            </div>
+            <div class="subcat-card-footer">
+              <span class="subcat-action-text">${c.hasChildren ? 'View Subcategories' : 'Shop Parts'}</span>
+              <span class="subcat-arrow-icon">➔</span>
+            </div>
+          </a>
+        `).join('')}
+      </div>
+    `;
   }
 
   function renderFitmentAlert() {
@@ -332,8 +438,6 @@ export default async function decorate(block) {
         let displayVal = val;
         if (code === 'quality' || code === 'brand') {
           displayVal = `Brand: ${getBrandNameFromQuality(val, val)}`;
-        } else if (code === 'category_filter' || code === 'category') {
-          displayVal = `Category: ${val}`;
         } else if (code === 'axle') {
           displayVal = `Placement: ${val}`;
         }
@@ -470,15 +574,15 @@ export default async function decorate(block) {
   function renderFacets(aggregations) {
     facetsContainer.innerHTML = '';
 
-    // Filter to clean automotive filter types: Category, Placement / Axle, Brand (attribute code 'quality'), and Price.
-    // Removes obscure technical attributes while maintaining full 3-level Category & Brand fitment.
-    // Shows filters only if at least 2 distinct options are eligible.
-    const allowedCodes = ['category_filter', 'category', 'quality', 'brand', 'price', 'axle'];
+    // Filter to clean automotive filters: Brand (quality), Placement (axle), and Price.
+    // Category filter is removed as requested (category navigation handled via subcategory pages & breadcrumbs).
+    const allowedCodes = ['quality', 'brand', 'price', 'axle'];
     const validAggs = (aggregations || []).filter((agg) => {
       const code = (agg.attribute_code || '').toLowerCase();
       const label = (agg.label || '').toLowerCase();
       if (code.includes('product_group') || label.includes('product group')) return false;
-      if (!allowedCodes.includes(code) && !label.includes('category') && !label.includes('brand') && !label.includes('quality') && !label.includes('price') && !label.includes('axle')) return false;
+      if (code.includes('category') || label.includes('category')) return false;
+      if (!allowedCodes.includes(code) && !label.includes('brand') && !label.includes('quality') && !label.includes('price') && !label.includes('axle')) return false;
       return agg.options && agg.options.length >= 2;
     });
 
@@ -510,7 +614,6 @@ export default async function decorate(block) {
       const content = document.createElement('div');
       content.className = 'facet-content';
 
-      // For facets with many options, provide a quick search filter
       if (agg.options.length > 7) {
         const searchInput = document.createElement('input');
         searchInput.type = 'text';
@@ -569,7 +672,6 @@ export default async function decorate(block) {
 
       content.append(list);
 
-      // Accordion toggle
       title.addEventListener('click', () => {
         const isCollapsed = group.classList.toggle('is-collapsed');
         title.querySelector('.facet-chevron').textContent = isCollapsed ? '▸' : '▾';
@@ -621,7 +723,6 @@ export default async function decorate(block) {
     });
     pagination.append(prevBtn);
 
-    // Page Numbers with sliding window
     const startPage = Math.max(1, currentPage - 2);
     const endPage = Math.min(totalPages, currentPage + 2);
 
@@ -705,10 +806,27 @@ export default async function decorate(block) {
   }
 
   async function loadProducts() {
+    const navInfo = getCategoryNavInfo(categoryId, categoryName);
+    const isLeaf = navInfo.isLeaf || Boolean(searchPhrase) || (!categoryId && !categoryName);
+
+    renderCategoryNavigation(navInfo);
+
+    // If this is a parent category (Level 1 or Level 2 with subcategories), render Inner Subcategory Grid
+    if (!isLeaf && navInfo.children && navInfo.children.length > 0) {
+      renderSubcategorySelectionView(navInfo);
+      return;
+    }
+
+    // Leaf category: Render Product Cards & Filters
+    plpLayout.classList.remove('is-subcategory-view');
+    sidebar.style.display = '';
+    toolbar.style.display = '';
+    viewModeBar.style.display = '';
+    grid.className = 'plp-grid';
+
     showPageLoader();
     grid.classList.add('loading');
     renderSkeletons(pageSize);
-    renderCategoryNavigation();
     renderFitmentAlert();
     countEl.innerHTML = '<span class="skeleton-shimmer skeleton-line skeleton-count-shimmer" style="width: 240px; height: 18px; display: inline-block;"></span>';
     if (facetsContainer && !facetsContainer.querySelector('.facet-group')) {
@@ -858,6 +976,6 @@ export default async function decorate(block) {
     loadProducts();
   });
 
-  // Initial load
-  await loadProducts();
+  // Trigger non-blocking initial load so footer & eager lifecycle render immediately
+  loadProducts();
 }

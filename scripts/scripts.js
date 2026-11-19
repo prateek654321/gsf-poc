@@ -121,11 +121,11 @@ async function loadLazy(doc) {
   const header = doc.querySelector('header');
   if (header) loadHeader(header);
 
-  const main = doc.querySelector('main');
-  if (main) await loadSections(main);
-
   const footer = doc.querySelector('footer');
   if (footer) loadFooter(footer);
+
+  const main = doc.querySelector('main');
+  if (main) await loadSections(main);
 
   loadCSS(`${window.hlx?.codeBasePath || ''}/styles/styles.css`);
   initPageTransitions();
