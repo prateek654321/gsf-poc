@@ -973,7 +973,7 @@ export default async function decorate(block) {
   tabFitted.addEventListener('click', () => {
     const stored = getStoredVehicle();
     if (!stored.hasVehicle) {
-      const regInput = document.querySelector('.vehicle-search-input') || document.querySelector('#header-vrm-input');
+      const regInput = document.querySelector('#compact-vrm-input') || document.querySelector('.vrm-plate-input') || document.querySelector('.vehicle-search-input') || document.querySelector('#header-vrm-input');
       if (regInput) {
         regInput.focus();
         regInput.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -286,7 +286,7 @@ const PRODUCT_FILTER_WITH_BRAND_SORT_QUERY = `
       filter: $productfilters,
       currentPage: $currentPage,
       pageSize: $productPageSize,
-      specialCoupon: "PARTS30"
+      specialCoupon: "ROAD10"
     ) {
       total_count
       aggregations {
@@ -307,7 +307,7 @@ const PRODUCT_FILTER_WITH_BRAND_SORT_QUERY = `
  *
  * @param {object} params
  * @param {number|number[]} params.categoryIds Leaf category ID or IDs
- * @param {object} params.vrmFilter { session_id, vrm, make, model, year, component_id }
+ * @param {object} params.vrmFilter { session_id, vrm, make, model, year, component_id, gCodeIDs, engine, body, hp }
  * @param {number} [params.page=1]
  * @param {number} [params.pageSize=60]
  * @param {object} [params.customFilters={}]
@@ -323,17 +323,23 @@ export async function fetchProductsWithBrandSort({
   const catArray = (Array.isArray(categoryIds) ? categoryIds : [categoryIds]).map(Number).filter(Boolean);
   const productfilters = {
     category_id: { in: catArray },
+    price: { from: 0.01 },
   };
 
-  if (vrmFilter && vrmFilter.session_id) {
-    productfilters.vrmFilter = {
-      session_id: String(vrmFilter.session_id),
+  if (vrmFilter && (vrmFilter.session_id || vrmFilter.vrm || vrmFilter.make)) {
+    const vf = {
+      session_id: String(vrmFilter.session_id || 'vdzY2NskTPnf'),
       year: String(vrmFilter.year || '2016'),
       vrm: String(vrmFilter.vrm || ''),
       make: String(vrmFilter.make || ''),
       model: String(vrmFilter.model || ''),
       component_id: String(vrmFilter.component_id || ''),
     };
+    if (vrmFilter.gCodeIDs) vf.gCodeIDs = String(vrmFilter.gCodeIDs);
+    if (vrmFilter.engine) vf.engine = String(vrmFilter.engine);
+    if (vrmFilter.body) vf.body = String(vrmFilter.body);
+    if (vrmFilter.hp) vf.hp = String(vrmFilter.hp);
+    productfilters.vrmFilter = vf;
   }
 
   // Merge custom facet filters (e.g. quality, filter_by)

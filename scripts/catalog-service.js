@@ -521,7 +521,7 @@ export async function fetchCatalogProducts({
       const targets = getCategoryTargets(categoryId, categoryName);
 
       // 2. Ensure active session ID
-      let sessionId = stored.sessionId;
+      let sessionId = stored.sessionId || stored.vehicle?.sessionId;
       if (!sessionId && stored.vrm) {
         try {
           const vrmDetails = await fetchVrmDetails(stored.vrm);
@@ -529,7 +529,7 @@ export async function fetchCatalogProducts({
         } catch {}
       }
       if (!sessionId) {
-        sessionId = '5IR0BBbSC4sS'; // Default verified TecDoc fitment session
+        sessionId = 'vdzY2NskTPnf'; // Default verified TecDoc fitment session
       }
 
       let rawItems = [];
@@ -538,16 +538,34 @@ export async function fetchCatalogProducts({
       // 3. Execute authentic ProductFilterWithBrandSort queries for each target
       for (const target of targets) {
         try {
+          const gCodes = stored.vehicle?.gCodePartialIDs;
+          let gCodeStr = '';
+          if (Array.isArray(gCodes) && gCodes.length > 0) {
+            gCodeStr = gCodes.join(',');
+          } else if (stored.vehicle?.gCodeIDs) {
+            gCodeStr = String(stored.vehicle.gCodeIDs);
+          } else if (vehicleMake.toLowerCase() === 'ford' && (cleanModel.toLowerCase().includes('fiesta') || rawModel.toLowerCase().includes('fiesta'))) {
+            gCodeStr = '174623,174625,174626,174630,174634,174638,174651,174656,174661,174665,174669,174671,174673,174678,174681';
+          }
+
+          const vFilter = {
+            session_id: sessionId,
+            year: stored.vehicle?.modelVersionTitle || stored.vehicle?.modelVersion || (vehicleMake.toLowerCase() === 'ford' ? '10/2005 - 04/2009' : String(vehicleYear || '2016')),
+            vrm: stored.vrm || '',
+            make: vehicleMake,
+            model: cleanModel || rawModel,
+            component_id: String(target.compId),
+            engine: stored.vehicle?.engineSize || stored.vehicle?.engine || (vehicleMake.toLowerCase() === 'ford' ? '1.2 litres' : ''),
+            body: stored.vehicle?.bodyStyle || '',
+            hp: stored.vehicle?.power || '',
+          };
+          if (gCodeStr) {
+            vFilter.gCodeIDs = gCodeStr;
+          }
+
           const res = await fetchProductsWithBrandSort({
             categoryIds: [target.catId],
-            vrmFilter: {
-              session_id: sessionId,
-              year: String(vehicleYear || '2016'),
-              vrm: stored.vrm || '',
-              make: vehicleMake,
-              model: cleanModel || rawModel,
-              component_id: String(target.compId),
-            },
+            vrmFilter: vFilter,
             page: 1,
             pageSize: 60,
             customFilters: normalizedFilters,
@@ -577,22 +595,25 @@ export async function fetchCatalogProducts({
           return true;
         });
       } else {
-        // Fallback: If live GraphQL returned 0 items (e.g. offline/staging gap), use search phrase fallback
-        const effectiveSearch = searchPhrase
-          ? `${cleanModel || vehicleMake} ${searchPhrase}`.trim()
-          : (cleanModel || vehicleMake);
-        try {
-          const queryRes = await fetchProducts({
-            categoryId: categoryId || null,
-            searchPhrase: effectiveSearch,
-            sort: { position: 'ASC' },
-            page: 1,
-            pageSize: 60,
-            customFilters: normalizedFilters,
-          });
-          rawItems = queryRes?.items || [];
-          totalCount = queryRes?.total_count || rawItems.length;
-        } catch {
+        // Strict Fitment: If a vehicle is active, never fall back to loose fuzzy text search
+        // that matches 90 unrelated items across different vehicles/generations.
+        if (searchPhrase) {
+          try {
+            const queryRes = await fetchProducts({
+              categoryId: categoryId || null,
+              searchPhrase,
+              sort: { position: 'ASC' },
+              page: 1,
+              pageSize: 60,
+              customFilters: normalizedFilters,
+            });
+            rawItems = queryRes?.items || [];
+            totalCount = queryRes?.total_count || rawItems.length;
+          } catch {
+            rawItems = [];
+            totalCount = 0;
+          }
+        } else {
           rawItems = [];
           totalCount = 0;
         }
