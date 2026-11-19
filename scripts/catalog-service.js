@@ -451,7 +451,7 @@ export async function fetchCatalogProducts({
 } = {}) {
   const config = getConfig();
   const currentPage = Math.max(1, parseInt(page, 10) || 1);
-  const targetPageSize = Math.max(1, parseInt(pageSize, 10) || config.pageSizeDefault || 15);
+  const targetPageSize = Math.max(1, parseInt(pageSize, 10) || config.pageSizeDefault || 10);
 
   // 1. If Adobe App Builder + API Mesh endpoint is configured, delegate directly
   if (config.catalogApiEndpoint) {
@@ -567,7 +567,7 @@ export async function fetchCatalogProducts({
             categoryIds: [target.catId],
             vrmFilter: vFilter,
             page: 1,
-            pageSize: 60,
+            pageSize: 100,
             customFilters: normalizedFilters,
           });
 
@@ -712,13 +712,22 @@ export async function fetchCatalogProducts({
       axle: getAxlePlacement(item),
     }));
 
-    // If totalFittedCount > 60 and user navigated past the initial pool, fetch that page directly from Magento
+    // If totalFittedCount > fitmentPool.rawItems.length and user navigated past initial pool, fetch that page directly
     if (pagedItems.length === 0 && safePage > 1 && fitmentPool.totalCount > fitmentPool.rawItems.length) {
       try {
-        const nextPageRes = await fetchProducts({
-          categoryId: categoryId || null,
-          searchPhrase: effectiveSearch,
-          sort,
+        const targets = getCategoryTargets(categoryId, categoryName);
+        const primaryTarget = targets[0] || { catId: categoryId, compId: '867' };
+        const nextPageRes = await fetchProductsWithBrandSort({
+          categoryIds: [primaryTarget.catId],
+          vrmFilter: {
+            session_id: sessionId,
+            year: stored.vehicle?.modelVersionTitle || stored.vehicle?.modelVersion || String(vehicleYear || '2016'),
+            vrm: stored.vrm || '',
+            make: vehicleMake,
+            model: cleanModel || rawModel,
+            component_id: String(primaryTarget.compId),
+            engine: stored.vehicle?.engineSize || stored.vehicle?.engine || '',
+          },
           page: safePage,
           pageSize: targetPageSize,
           customFilters: normalizedFilters,
@@ -915,14 +924,51 @@ export async function fetchCatalogProducts({
     delete normalizedFilters.brand;
   }
 
-  const result = await fetchProducts({
-    categoryId: categoryId || null,
-    searchPhrase: searchPhrase || null,
-    sort,
-    page: currentPage,
-    pageSize: targetPageSize,
-    customFilters: normalizedFilters,
-  });
+  let result;
+  const isDefaultPositionSort = !sortField || sortField === 'position';
+
+  // When browsing by category on initial load / position sort without free-text search,
+  // query productFilterWithBrandSort to match GSF headless preproduction brand tier positioning
+  if (categoryId && !searchPhrase && isDefaultPositionSort) {
+    try {
+      result = await fetchProductsWithBrandSort({
+        categoryIds: [categoryId],
+        page: currentPage,
+        pageSize: targetPageSize,
+        customFilters: normalizedFilters,
+      });
+
+      // If BrandSort returned no items (e.g. category requires vehicle), fall back to standard query
+      if (!result?.items || result.items.length === 0) {
+        result = await fetchProducts({
+          categoryId: categoryId || null,
+          searchPhrase: searchPhrase || null,
+          sort,
+          page: currentPage,
+          pageSize: targetPageSize,
+          customFilters: normalizedFilters,
+        });
+      }
+    } catch {
+      result = await fetchProducts({
+        categoryId: categoryId || null,
+        searchPhrase: searchPhrase || null,
+        sort,
+        page: currentPage,
+        pageSize: targetPageSize,
+        customFilters: normalizedFilters,
+      });
+    }
+  } else {
+    result = await fetchProducts({
+      categoryId: categoryId || null,
+      searchPhrase: searchPhrase || null,
+      sort,
+      page: currentPage,
+      pageSize: targetPageSize,
+      customFilters: normalizedFilters,
+    });
+  }
 
   let items = result.items || [];
   if (activeCatFilterAll) {
@@ -940,14 +986,24 @@ export async function fetchCatalogProducts({
   if (items.length < targetPageSize && currentPage < totalPages && items.length > 0) {
     try {
       const missingCount = targetPageSize - items.length;
-      const nextPage = await fetchProducts({
-        categoryId: categoryId || null,
-        searchPhrase: searchPhrase || null,
-        sort,
-        page: currentPage + 1,
-        pageSize: targetPageSize,
-        customFilters: normalizedFilters,
-      });
+      let nextPage;
+      if (categoryId && !searchPhrase && isDefaultPositionSort) {
+        nextPage = await fetchProductsWithBrandSort({
+          categoryIds: [categoryId],
+          page: currentPage + 1,
+          pageSize: targetPageSize,
+          customFilters: normalizedFilters,
+        });
+      } else {
+        nextPage = await fetchProducts({
+          categoryId: categoryId || null,
+          searchPhrase: searchPhrase || null,
+          sort,
+          page: currentPage + 1,
+          pageSize: targetPageSize,
+          customFilters: normalizedFilters,
+        });
+      }
 
       if (nextPage.items && nextPage.items.length > 0) {
         items = [...items, ...nextPage.items.slice(0, missingCount)];

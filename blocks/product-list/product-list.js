@@ -94,7 +94,7 @@ export default async function decorate(block) {
   const categoryName = urlParams.get('category_name') || '';
   const searchPhrase = urlParams.get('q') || urlParams.get('search') || '';
   let currentPage = parseInt(urlParams.get('page'), 10) || 1;
-  let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
+  let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 10;
   let sortField = 'position';
   let sortDir = 'ASC';
   let activeFilters = {};
@@ -160,7 +160,7 @@ export default async function decorate(block) {
             <div class="plp-control-group">
               <label for="plp-sort-select">Sort By:</label>
               <select id="plp-sort-select" class="plp-select">
-                <option value="position:ASC">Relevance</option>
+                <option value="position:ASC">Position (Default)</option>
                 <option value="price:ASC">Price: Low to High</option>
                 <option value="price:DESC">Price: High to Low</option>
                 <option value="name:ASC">Name: A to Z</option>
@@ -169,9 +169,9 @@ export default async function decorate(block) {
             <div class="plp-control-group">
               <label for="plp-pagesize-select">Show:</label>
               <select id="plp-pagesize-select" class="plp-select">
-                <option value="15">15 per page</option>
-                <option value="30">30 per page</option>
-                <option value="60">60 per page</option>
+                <option value="10">10 per page</option>
+                <option value="20">20 per page</option>
+                <option value="50">50 per page</option>
               </select>
             </div>
           </div>
