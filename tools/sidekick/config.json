@@ -4,33 +4,22 @@
   "liveHost": "main--gsf-poc--prateek654321.aem.live",
   "plugins": [
     {
-      "id": "publish-live",
-      "title": "🚀 Publish to Live",
-      "event": "publish-live",
-      "pinned": true,
-      "environments": [
-        "preview",
-        "dev"
-      ]
-    },
-    {
       "id": "switch-preview",
       "title": "👁️ View Preview",
       "event": "switch-preview",
-      "pinned": true,
-      "environments": [
-        "live"
-      ]
+      "pinned": true
     },
     {
       "id": "switch-live",
       "title": "🚀 View Live",
       "event": "switch-live",
-      "pinned": true,
-      "environments": [
-        "preview",
-        "dev"
-      ]
+      "pinned": true
+    },
+    {
+      "id": "publish-live",
+      "title": "🚀 Publish to Live",
+      "event": "publish-live",
+      "pinned": true
     },
     {
       "id": "categories",

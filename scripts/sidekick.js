@@ -1,10 +1,10 @@
 /**
  * Integration and custom handlers for the default Adobe AEM Sidekick extension (<aem-sidekick>).
  * Extends the default Sidekick with:
- *  - "🚀 Publish to Live" custom action (calls Adobe Admin API)
- *  - "👁️ View Preview" / "🚀 View Live" one-click environment switcher
+ *  - "👁️ View Preview" & "🚀 View Live" one-click environment switching
+ *  - "🚀 Publish to Live" (calls Adobe Admin API)
+ *  - Un-disabling the native "Preview" item in the <env-switcher> dropdown
  *  - "⚡ Sync Code" cache bus purging
- *  - Native event hooks (published, env-switched)
  */
 
 const REPO_CONFIG = {
@@ -62,7 +62,6 @@ function showToast(message, type = 'info', actionButton = null) {
     document.body.appendChild(toast);
   }
 
-  // Border accent
   const borderColor = type === 'success' ? '#00c853' : (type === 'error' ? '#f44336' : '#00b4d8');
   toast.style.borderLeft = `4px solid ${borderColor}`;
 
@@ -101,7 +100,6 @@ function showToast(message, type = 'info', actionButton = null) {
   };
   toast.appendChild(closeBtn);
 
-  // Animate in
   requestAnimationFrame(() => {
     toast.style.opacity = '1';
     toast.style.transform = 'translateY(0)';
@@ -126,7 +124,7 @@ async function publishToLive() {
 
   try {
     const liveEndpoint = `${adminBase}/live/${owner}/${repo}/${ref}${cleanPath === '/' ? '/index' : cleanPath}`;
-    const liveRes = await fetch(liveEndpoint, { method: 'POST' }).catch(() => null);
+    await fetch(liveEndpoint, { method: 'POST' }).catch(() => null);
 
     const codeEndpoint = `${adminBase}/code/${owner}/${repo}/${ref}/*`;
     await fetch(codeEndpoint, { method: 'POST' }).catch(() => null);
@@ -145,9 +143,23 @@ async function publishToLive() {
 }
 
 /**
- * Switches between preview and live environments
+ * Purges the code bus cache
  */
-function switchEnvironment(targetEnv) {
+async function syncCode() {
+  showToast('⚡ Purging code bus cache...', 'info');
+  try {
+    const codeEndpoint = `https://admin.hlx.page/code/${REPO_CONFIG.owner}/${REPO_CONFIG.repo}/${REPO_CONFIG.ref}/*`;
+    await fetch(codeEndpoint, { method: 'POST' });
+    showToast('✓ Code cache purged successfully!', 'success');
+  } catch (err) {
+    showToast(`Error syncing code: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * Switches between preview, live, and dev environments preserving path and query
+ */
+export function switchEnvironment(targetEnv) {
   const { pathname, search, hash } = window.location;
   let targetOrigin = '';
 
@@ -166,69 +178,153 @@ function switchEnvironment(targetEnv) {
     showToast(`Switching to ${targetEnv.toUpperCase()}...`, 'info');
     setTimeout(() => {
       window.location.href = targetUrl;
-    }, 200);
+    }, 150);
   }
 }
 
 /**
- * Attach listeners to the default AEM Sidekick element
- * @param {Element} sk The <aem-sidekick> or <helix-sidekick> DOM element
+ * Un-disables native menu items in the default Sidekick's <env-switcher>
  */
-function attachSidekickListeners(sk) {
-  if (!sk || sk._gsfListenersAttached) return;
-  sk._gsfListenersAttached = true;
+function unDisableNativeEnvSwitcher(sk) {
+  try {
+    const root = sk?.shadowRoot || sk;
+    if (!root) return;
 
-  // 1. Custom Action: Publish to Live
-  sk.addEventListener('custom:publish-live', () => {
-    publishToLive();
+    // Traverse shadowRoot tree
+    const envSwitchers = root.querySelectorAll('env-switcher, [class*="env-switcher"]');
+    envSwitchers.forEach((sw) => {
+      const swRoot = sw.shadowRoot || sw;
+      const pickers = swRoot.querySelectorAll('action-bar-picker, [class*="picker"]');
+      pickers.forEach((picker) => {
+        // Preview item
+        const previewItems = picker.querySelectorAll('.env-preview, [value="preview"], sk-menu-item.env-preview');
+        previewItems.forEach((item) => {
+          item.removeAttribute('disabled');
+          item.style.pointerEvents = 'auto';
+          item.style.opacity = '1';
+          if (!item._gsfBound) {
+            item._gsfBound = true;
+            item.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              switchEnvironment('preview');
+            });
+          }
+        });
+
+        // Live item
+        const liveItems = picker.querySelectorAll('.env-live, [value="live"], sk-menu-item.env-live');
+        liveItems.forEach((item) => {
+          item.removeAttribute('disabled');
+          item.style.pointerEvents = 'auto';
+          item.style.opacity = '1';
+          if (!item._gsfBound) {
+            item._gsfBound = true;
+            item.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              switchEnvironment('live');
+            });
+          }
+        });
+      });
+    });
+  } catch {
+    // Ignore DOM traversal edge cases
+  }
+}
+
+/**
+ * Attach listeners to default AEM Sidekick element
+ */
+function attachToSidekick(sk) {
+  if (!sk) return;
+
+  const onSwitchPreview = () => switchEnvironment('preview');
+  const onSwitchLive = () => switchEnvironment('live');
+  const onPublishLive = () => publishToLive();
+  const onSyncCode = () => syncCode();
+
+  // Attach direct event listeners on <aem-sidekick>
+  sk.addEventListener('custom:switch-preview', onSwitchPreview);
+  sk.addEventListener('switch-preview', onSwitchPreview);
+
+  sk.addEventListener('custom:switch-live', onSwitchLive);
+  sk.addEventListener('switch-live', onSwitchLive);
+
+  sk.addEventListener('custom:publish-live', onPublishLive);
+  sk.addEventListener('publish-live', onPublishLive);
+
+  sk.addEventListener('custom:sync-code', onSyncCode);
+  sk.addEventListener('sync-code', onSyncCode);
+
+  // When published via native button, sync code bus
+  sk.addEventListener('published', () => {
+    fetch(`https://admin.hlx.page/code/${REPO_CONFIG.owner}/${REPO_CONFIG.repo}/${REPO_CONFIG.ref}/*`, { method: 'POST' }).catch(() => {});
   });
 
-  // 2. Custom Action: Switch to Preview
-  sk.addEventListener('custom:switch-preview', () => {
-    switchEnvironment('preview');
-  });
-
-  // 3. Custom Action: Switch to Live
-  sk.addEventListener('custom:switch-live', () => {
-    switchEnvironment('live');
-  });
-
-  // 4. Custom Action: Sync Code
-  sk.addEventListener('custom:sync-code', async () => {
-    showToast('⚡ Purging code bus cache...', 'info');
-    try {
-      const codeEndpoint = `https://admin.hlx.page/code/${REPO_CONFIG.owner}/${REPO_CONFIG.repo}/${REPO_CONFIG.ref}/*`;
-      await fetch(codeEndpoint, { method: 'POST' });
-      showToast('✓ Code cache purged successfully!', 'success');
-    } catch (err) {
-      showToast(`Error syncing code: ${err.message}`, 'error');
-    }
-  });
-
-  // 5. Default Sidekick Event: Native published
-  sk.addEventListener('published', async () => {
-    try {
-      const codeEndpoint = `https://admin.hlx.page/code/${REPO_CONFIG.owner}/${REPO_CONFIG.repo}/${REPO_CONFIG.ref}/*`;
-      await fetch(codeEndpoint, { method: 'POST' });
-    } catch {
-      // Ignore
-    }
-  });
+  // Enable menu items in native env-switcher
+  unDisableNativeEnvSwitcher(sk);
 }
 
 /**
  * Initializes listeners on the default Adobe AEM Sidekick
  */
 export function initSidekick() {
-  const sk = document.querySelector('aem-sidekick, helix-sidekick');
-  if (sk) {
-    attachSidekickListeners(sk);
-  } else {
-    document.addEventListener('sidekick-ready', () => {
-      const sidekickEl = document.querySelector('aem-sidekick, helix-sidekick');
-      if (sidekickEl) {
-        attachSidekickListeners(sidekickEl);
-      }
-    }, { once: true });
-  }
+  // Document and Window level event listeners
+  const onSwitchPreview = () => switchEnvironment('preview');
+  const onSwitchLive = () => switchEnvironment('live');
+  const onPublishLive = () => publishToLive();
+  const onSyncCode = () => syncCode();
+
+  ['custom:switch-preview', 'switch-preview'].forEach((evt) => {
+    document.addEventListener(evt, onSwitchPreview);
+    window.addEventListener(evt, onSwitchPreview);
+  });
+
+  ['custom:switch-live', 'switch-live'].forEach((evt) => {
+    document.addEventListener(evt, onSwitchLive);
+    window.addEventListener(evt, onSwitchLive);
+  });
+
+  ['custom:publish-live', 'publish-live'].forEach((evt) => {
+    document.addEventListener(evt, onPublishLive);
+    window.addEventListener(evt, onPublishLive);
+  });
+
+  ['custom:sync-code', 'sync-code'].forEach((evt) => {
+    document.addEventListener(evt, onSyncCode);
+    window.addEventListener(evt, onSyncCode);
+  });
+
+  // Attach to existing elements immediately
+  document.querySelectorAll('aem-sidekick, helix-sidekick').forEach(attachToSidekick);
+
+  // Listen on sidekick-ready event
+  document.addEventListener('sidekick-ready', () => {
+    document.querySelectorAll('aem-sidekick, helix-sidekick').forEach(attachToSidekick);
+  });
+
+  // Observe DOM additions of <aem-sidekick>
+  const observer = new MutationObserver(() => {
+    const els = document.querySelectorAll('aem-sidekick, helix-sidekick');
+    if (els.length > 0) {
+      els.forEach(attachToSidekick);
+    }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  // Polling checks during the first 5 seconds to catch element creation and un-disable env switcher
+  let ticks = 0;
+  const pollTimer = setInterval(() => {
+    ticks += 1;
+    const els = document.querySelectorAll('aem-sidekick, helix-sidekick');
+    if (els.length > 0) {
+      els.forEach((sk) => {
+        attachToSidekick(sk);
+        unDisableNativeEnvSwitcher(sk);
+      });
+    }
+    if (ticks > 50) clearInterval(pollTimer);
+  }, 100);
 }
