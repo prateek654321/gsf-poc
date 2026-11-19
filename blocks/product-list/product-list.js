@@ -100,12 +100,14 @@ export default async function decorate(block) {
   let activeFilters = {};
 
   const initialNavInfo = getCategoryNavInfo(categoryId, categoryName);
-  const isInitialLeaf = initialNavInfo.isLeaf || Boolean(searchPhrase) || (!categoryId && !categoryName);
+  const initialChildren = initialNavInfo?.children || initialNavInfo?.subcategories || [];
+  const isInitialParent = (initialNavInfo?.level === 1 || initialNavInfo?.level === 2) && initialChildren.length > 0 && !searchPhrase;
+  const isInitialLeaf = !isInitialParent;
 
   block.innerHTML = `
-    <div class="plp-layout ${!isInitialLeaf ? 'is-subcategory-view' : ''}">
+    <div class="plp-layout ${isInitialParent ? 'is-subcategory-view' : ''}">
       <!-- Sidebar Filters (Only for Leaf Categories & Searches) -->
-      <aside class="plp-sidebar" aria-label="Product Filters" ${!isInitialLeaf ? 'style="display:none;"' : ''}>
+      <aside class="plp-sidebar" aria-label="Product Filters" ${isInitialParent ? 'style="display:none;"' : ''}>
         <div class="sidebar-header">
           <div class="sidebar-title-box">
             <span class="sidebar-icon">⚙️</span>
@@ -300,7 +302,9 @@ export default async function decorate(block) {
   function renderSubcategorySelectionView(navInfo) {
     const stored = getStoredVehicle();
     const vrmQuery = stored.vrm ? `&vrm=${encodeURIComponent(stored.vrm)}` : '';
-    const children = navInfo.children || [];
+    const children = (navInfo?.children && navInfo.children.length > 0)
+      ? navInfo.children
+      : (navInfo?.subcategories || []);
     const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
     const vehicleLabel = isManual
       ? (stored.summary || `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim())
@@ -347,24 +351,31 @@ export default async function decorate(block) {
 
       <!-- Subcategory Cards Grid -->
       <div class="subcat-cards-grid">
-        ${children.map((c) => `
-          <a href="${c.href}${vrmQuery}" class="subcat-card" title="Browse ${c.name}">
-            <div class="subcat-card-header">
-              <div class="subcat-icon-wrap">
-                <span class="subcat-icon">${c.icon || '📦'}</span>
+        ${children.map((c) => {
+          const cName = c.name || '';
+          const cIcon = c.icon || (cName.toLowerCase().includes('disc') ? '💿' : (cName.toLowerCase().includes('caliper') ? '🗜️' : (cName.toLowerCase().includes('shoe') ? '🛞' : (cName.toLowerCase().includes('cable') ? '⛓️' : (cName.toLowerCase().includes('filter') ? '🔧' : (cName.toLowerCase().includes('oil') ? '🛢️' : (cName.toLowerCase().includes('plug') ? '⚡' : (cName.toLowerCase().includes('wiper') ? '🌧️' : (cName.toLowerCase().includes('battery') ? '🔋' : '🛑')))))))));
+          const cTag = c.tag || 'Guaranteed Fit';
+          const cDesc = c.desc || `Browse genuine and OEM ${cName} parts`;
+          const hasSub = c.hasChildren ?? (navInfo.level === 1);
+          return `
+            <a href="${c.href || `/plp.html?category_id=${c.id}&category_name=${encodeURIComponent(cName)}`}${vrmQuery}" class="subcat-card" title="Browse ${cName}">
+              <div class="subcat-card-header">
+                <div class="subcat-icon-wrap">
+                  <span class="subcat-icon">${cIcon}</span>
+                </div>
+                <span class="subcat-pill">${cTag}</span>
               </div>
-              <span class="subcat-pill">${c.tag || 'Guaranteed Fit'}</span>
-            </div>
-            <div class="subcat-card-body">
-              <h3 class="subcat-card-title">${c.name}</h3>
-              <p class="subcat-card-desc">${c.desc || `Browse genuine and OEM ${c.name} parts`}</p>
-            </div>
-            <div class="subcat-card-footer">
-              <span class="subcat-action-text">${c.hasChildren ? 'View Subcategories' : 'Shop Parts'}</span>
-              <span class="subcat-arrow-icon">➔</span>
-            </div>
-          </a>
-        `).join('')}
+              <div class="subcat-card-body">
+                <h3 class="subcat-card-title">${cName}</h3>
+                <p class="subcat-card-desc">${cDesc}</p>
+              </div>
+              <div class="subcat-card-footer">
+                <span class="subcat-action-text">${hasSub ? 'View Subcategories' : 'Shop Parts'}</span>
+                <span class="subcat-arrow-icon">➔</span>
+              </div>
+            </a>
+          `;
+        }).join('')}
       </div>
     `;
   }
@@ -807,12 +818,15 @@ export default async function decorate(block) {
 
   async function loadProducts() {
     const navInfo = getCategoryNavInfo(categoryId, categoryName);
-    const isLeaf = navInfo.isLeaf || Boolean(searchPhrase) || (!categoryId && !categoryName);
+    const children = (navInfo?.children && navInfo.children.length > 0)
+      ? navInfo.children
+      : (navInfo?.subcategories || []);
+    const isParent = (navInfo?.level === 1 || navInfo?.level === 2) && children.length > 0 && !searchPhrase;
 
     renderCategoryNavigation(navInfo);
 
     // If this is a parent category (Level 1 or Level 2 with subcategories), render Inner Subcategory Grid
-    if (!isLeaf && navInfo.children && navInfo.children.length > 0) {
+    if (isParent) {
       renderSubcategorySelectionView(navInfo);
       return;
     }
