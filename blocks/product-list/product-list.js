@@ -6,7 +6,7 @@ import {
   isUniversalProduct,
 } from '../../scripts/catalog-service.js';
 import { getStoredVehicle, lookupVrmAndFetchSkus } from '../../scripts/vehicle-lookup.js';
-import { getCategoryNavInfo } from '../../scripts/category-component-map.js';
+import { getCategoryNavInfo } from '../../scripts/category-component-map.js?v=4';
 import { getConfig } from '../../scripts/config.js';
 import { showPageLoader, hidePageLoader } from '../../scripts/scripts.js';
 
