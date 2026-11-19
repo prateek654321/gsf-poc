@@ -32,6 +32,20 @@
         window.location.replace('/plp.html' + s + h);
       } else if (p === '/pdp' || p === '/pdp/') {
         window.location.replace('/pdp.html' + s + h);
+      } else if (p === '/parts' || p === '/parts/') {
+        window.location.replace('/plp.html?category_id=5275&category_name=Car%20Parts' + (s ? '&' + s.slice(1) : '') + h);
+      } else if (p === '/parts/service-parts' || p === '/parts/service-parts/') {
+        window.location.replace('/plp.html?category_id=5278&category_name=Service%20Parts' + (s ? '&' + s.slice(1) : '') + h);
+      } else if (p === '/parts/service-parts/wiper-blades' || p === '/parts/service-parts/wiper-blades/') {
+        window.location.replace('/plp.html?category_id=5389&category_name=Wiper%20Blades' + (s ? '&' + s.slice(1) : '') + h);
+      } else if (p === '/parts/service-parts/wiper-blades/wiper-blades' || p === '/parts/service-parts/wiper-blades/wiper-blades/') {
+        window.location.replace('/plp.html?category_id=5392&category_name=Wiper%20Blades' + (s ? '&' + s.slice(1) : '') + h);
+      } else if (p === '/parts/braking' || p === '/parts/braking/') {
+        window.location.replace('/plp.html?category_id=5461&category_name=Braking' + (s ? '&' + s.slice(1) : '') + h);
+      } else if (p.startsWith('/parts/braking/brake-pads-discs')) {
+        window.location.replace('/plp.html?category_id=5464&category_name=Brake%20Pads%20%26%20Discs' + (s ? '&' + s.slice(1) : '') + h);
+      } else if (p.startsWith('/parts/braking/brake-pads')) {
+        window.location.replace('/plp.html?category_id=5467&category_name=Brake%20Pads' + (s ? '&' + s.slice(1) : '') + h);
       }
     })();
   </script>

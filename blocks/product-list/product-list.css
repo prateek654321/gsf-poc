@@ -1172,11 +1172,102 @@
   line-height: 1.4;
 }
 
+/* Grouped Subcategories Sections (Rule 1: Multi-level Categories) */
+.subcat-groups-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+  width: 100%;
+}
+
+.subcat-group-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background-color: #ffffff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  padding: 1.75rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
+}
+
+.subcat-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--color-gray-100);
+  padding-bottom: 1rem;
+  margin-bottom: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.subcat-group-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.subcat-group-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.subcat-group-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--color-gray-900);
+  letter-spacing: -0.01em;
+}
+
+.subcat-group-count {
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.subcat-group-viewall {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--color-brand-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background-color: #eff6ff;
+  border: 1px solid #dbeafe;
+  transition: all 0.15s ease;
+}
+
+.subcat-group-viewall:hover {
+  background-color: #002f6c;
+  color: #ffffff;
+  border-color: #002f6c;
+}
+
+.subcat-group-viewall:hover .viewall-arrow {
+  transform: translateX(3px);
+}
+
+.viewall-arrow {
+  transition: transform 0.15s ease;
+  font-size: 0.875rem;
+}
+
 /* Subcategory Cards Grid */
 .subcat-cards-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.25rem;
+}
+
+.subcat-view-container > .subcat-cards-grid {
   min-height: 380px;
 }
 

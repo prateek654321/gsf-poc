@@ -100,8 +100,7 @@ export default async function decorate(block) {
   let activeFilters = {};
 
   const initialNavInfo = getCategoryNavInfo(categoryId, categoryName);
-  const initialChildren = initialNavInfo?.children || initialNavInfo?.subcategories || [];
-  const isInitialParent = (initialNavInfo?.level === 1 || initialNavInfo?.level === 2) && initialChildren.length > 0 && !searchPhrase;
+  const isInitialParent = !initialNavInfo.isLeaf && !searchPhrase;
   const isInitialLeaf = !isInitialParent;
 
   block.innerHTML = `
@@ -296,15 +295,16 @@ export default async function decorate(block) {
   }
 
   /**
-   * Renders the Inner Subcategories Selection View for parent categories (Level 1 & 2)
-   * Matches gsfcarparts.com behavior: parents never list products, but display subcategory tiles.
+   * Renders the Inner Subcategories Selection View for parent categories
+   * Rule 1: If category has multi-level nested groups (e.g. Car Parts, Service Parts, Braking),
+   *         render each direct subcategory as a SECTION HEADING and cards under it.
+   * Rule 2: If category has only one level of child categories (e.g. Wiper Blades, Brake Pads & Discs, Filters),
+   *         render cards DIRECTLY without headings, clickable to view products.
    */
   function renderSubcategorySelectionView(navInfo) {
     const stored = getStoredVehicle();
     const vrmQuery = stored.vrm ? `&vrm=${encodeURIComponent(stored.vrm)}` : '';
-    const children = (navInfo?.children && navInfo.children.length > 0)
-      ? navInfo.children
-      : (navInfo?.subcategories || []);
+    const children = navInfo?.children || [];
     const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
     const vehicleLabel = isManual
       ? (stored.summary || `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim())
@@ -320,12 +320,80 @@ export default async function decorate(block) {
     fitmentAlert.style.display = 'none';
 
     grid.className = 'subcat-view-container';
+
+    // Helper to render an individual subcategory card
+    function renderCard(c) {
+      const cName = c.name || '';
+      const cIcon = c.icon || (cName.toLowerCase().includes('disc') ? '💿' : (cName.toLowerCase().includes('caliper') ? '🗜️' : (cName.toLowerCase().includes('shoe') ? '🛞' : (cName.toLowerCase().includes('cable') ? '⛓️' : (cName.toLowerCase().includes('filter') ? '🔧' : (cName.toLowerCase().includes('oil') ? '🛢️' : (cName.toLowerCase().includes('plug') ? '⚡' : (cName.toLowerCase().includes('wiper') ? '🌧️' : (cName.toLowerCase().includes('battery') ? '🔋' : '🛑')))))))));
+      const cTag = c.tag || 'Guaranteed Fit';
+      const cDesc = c.desc || `Browse genuine and OEM ${cName} parts`;
+      const actionText = c.hasChildren ? 'View Subcategories' : 'Shop Parts';
+
+      return `
+        <a href="${c.href || `/plp.html?category_id=${c.id}&category_name=${encodeURIComponent(cName)}`}${vrmQuery}" class="subcat-card" title="Browse ${cName}">
+          <div class="subcat-card-header">
+            <div class="subcat-icon-wrap">
+              <span class="subcat-icon">${cIcon}</span>
+            </div>
+            <span class="subcat-pill">${cTag}</span>
+          </div>
+          <div class="subcat-card-body">
+            <h3 class="subcat-card-title">${cName}</h3>
+            <p class="subcat-card-desc">${cDesc}</p>
+          </div>
+          <div class="subcat-card-footer">
+            <span class="subcat-action-text">${actionText}</span>
+            <span class="subcat-arrow-icon">➔</span>
+          </div>
+        </a>
+      `;
+    }
+
+    // Determine content: Grouped sections (Rule 1) or Direct Cards (Rule 2)
+    let contentHtml = '';
+    if (navInfo.hasNestedGroups && navInfo.groups && navInfo.groups.length > 0) {
+      // RULE 1: Multi-level category -> Direct subcategories as SECTION HEADINGS with cards inside
+      contentHtml = `
+        <div class="subcat-groups-wrapper">
+          ${navInfo.groups.map((group) => `
+            <section class="subcat-group-section" aria-labelledby="subcat-group-${group.id}">
+              <div class="subcat-group-header">
+                <div class="subcat-group-title-wrap">
+                  <span class="subcat-group-icon">${group.icon}</span>
+                  <h2 id="subcat-group-${group.id}" class="subcat-group-title">${group.name}</h2>
+                  <span class="subcat-group-count">(${group.items.length})</span>
+                </div>
+                <a href="${group.href}${vrmQuery}" class="subcat-group-viewall" title="View all ${group.name} subcategories">
+                  <span>View all ${group.name}</span>
+                  <span class="viewall-arrow">➔</span>
+                </a>
+              </div>
+              <div class="subcat-cards-grid">
+                ${group.items.map((item) => renderCard(item)).join('')}
+              </div>
+            </section>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      // RULE 2: Single level of children -> Show cards directly without heading
+      contentHtml = `
+        <div class="subcat-cards-grid">
+          ${children.map((c) => renderCard(c)).join('')}
+        </div>
+      `;
+    }
+
+    const totalSubcatCount = navInfo.hasNestedGroups && navInfo.groups
+      ? navInfo.groups.reduce((sum, g) => sum + g.items.length, 0)
+      : children.length;
+
     grid.innerHTML = `
       <!-- Subcategory Hero Banner -->
       <div class="subcat-hero">
         <div class="subcat-hero-top">
-          <span class="subcat-badge">${navInfo.level === 1 ? 'Department' : 'Category'}</span>
-          <span class="subcat-count-pill">${children.length} Subcategories</span>
+          <span class="subcat-badge">${navInfo.level <= 1 ? 'Department' : 'Category'}</span>
+          <span class="subcat-count-pill">${totalSubcatCount} Subcategories</span>
         </div>
         <h1 class="subcat-hero-title">${navInfo.current.name}</h1>
         <p class="subcat-hero-desc">${navInfo.current.desc || 'Select a subcategory below to view parts guaranteed to fit your vehicle.'}</p>
@@ -349,34 +417,8 @@ export default async function decorate(block) {
         </div>
       `}
 
-      <!-- Subcategory Cards Grid -->
-      <div class="subcat-cards-grid">
-        ${children.map((c) => {
-          const cName = c.name || '';
-          const cIcon = c.icon || (cName.toLowerCase().includes('disc') ? '💿' : (cName.toLowerCase().includes('caliper') ? '🗜️' : (cName.toLowerCase().includes('shoe') ? '🛞' : (cName.toLowerCase().includes('cable') ? '⛓️' : (cName.toLowerCase().includes('filter') ? '🔧' : (cName.toLowerCase().includes('oil') ? '🛢️' : (cName.toLowerCase().includes('plug') ? '⚡' : (cName.toLowerCase().includes('wiper') ? '🌧️' : (cName.toLowerCase().includes('battery') ? '🔋' : '🛑')))))))));
-          const cTag = c.tag || 'Guaranteed Fit';
-          const cDesc = c.desc || `Browse genuine and OEM ${cName} parts`;
-          const hasSub = c.hasChildren ?? (navInfo.level === 1);
-          return `
-            <a href="${c.href || `/plp.html?category_id=${c.id}&category_name=${encodeURIComponent(cName)}`}${vrmQuery}" class="subcat-card" title="Browse ${cName}">
-              <div class="subcat-card-header">
-                <div class="subcat-icon-wrap">
-                  <span class="subcat-icon">${cIcon}</span>
-                </div>
-                <span class="subcat-pill">${cTag}</span>
-              </div>
-              <div class="subcat-card-body">
-                <h3 class="subcat-card-title">${cName}</h3>
-                <p class="subcat-card-desc">${cDesc}</p>
-              </div>
-              <div class="subcat-card-footer">
-                <span class="subcat-action-text">${hasSub ? 'View Subcategories' : 'Shop Parts'}</span>
-                <span class="subcat-arrow-icon">➔</span>
-              </div>
-            </a>
-          `;
-        }).join('')}
-      </div>
+      <!-- Subcategories Content -->
+      ${contentHtml}
     `;
   }
 
@@ -818,14 +860,11 @@ export default async function decorate(block) {
 
   async function loadProducts() {
     const navInfo = getCategoryNavInfo(categoryId, categoryName);
-    const children = (navInfo?.children && navInfo.children.length > 0)
-      ? navInfo.children
-      : (navInfo?.subcategories || []);
-    const isParent = (navInfo?.level === 1 || navInfo?.level === 2) && children.length > 0 && !searchPhrase;
+    const isParent = !navInfo.isLeaf && !searchPhrase;
 
     renderCategoryNavigation(navInfo);
 
-    // If this is a parent category (Level 1 or Level 2 with subcategories), render Inner Subcategory Grid
+    // If this is a parent category (has subcategories), render Inner Subcategory Grid
     if (isParent) {
       renderSubcategorySelectionView(navInfo);
       return;
