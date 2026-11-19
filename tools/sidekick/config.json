@@ -1,12 +1,31 @@
 {
   "project": "GSF Car Parts",
-  "host": "main--gsf-poc--prateek654321.aem.live",
   "previewHost": "main--gsf-poc--prateek654321.aem.page",
   "liveHost": "main--gsf-poc--prateek654321.aem.live",
   "plugins": [
     {
-      "id": "publish",
-      "title": "Publish to Live",
+      "id": "publish-live",
+      "title": "🚀 Publish to Live",
+      "event": "publish-live",
+      "pinned": true,
+      "environments": [
+        "preview",
+        "dev"
+      ]
+    },
+    {
+      "id": "switch-preview",
+      "title": "👁️ View Preview",
+      "event": "switch-preview",
+      "pinned": true,
+      "environments": [
+        "live"
+      ]
+    },
+    {
+      "id": "switch-live",
+      "title": "🚀 View Live",
+      "event": "switch-live",
       "pinned": true,
       "environments": [
         "preview",
@@ -30,6 +49,12 @@
       "title": "🚗 My Garage",
       "pinned": true,
       "url": "/plp.html?category_id=5461&category_name=Braking&vrm=AK18WEX"
+    },
+    {
+      "id": "sync-code",
+      "title": "⚡ Sync Code",
+      "event": "sync-code",
+      "pinned": false
     }
   ]
 }

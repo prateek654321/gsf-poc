@@ -130,12 +130,11 @@ async function loadLazy(doc) {
   loadCSS(`${window.hlx?.codeBasePath || ''}/styles/styles.css`);
   initPageTransitions();
 
-  // Load AEM Sidekick (Environment switcher, Publish to Live, and quick tools)
-  loadCSS(`${window.hlx?.codeBasePath || ''}/styles/sidekick.css`);
+  // Attach custom handlers and extra features to the default Adobe AEM Sidekick
   import('./sidekick.js').then(({ initSidekick }) => {
     initSidekick();
   }).catch((err) => {
-    console.warn('Could not load Sidekick:', err);
+    console.warn('Could not initialize Sidekick listeners:', err);
   });
 }
 

@@ -1,85 +1,20 @@
 /**
- * AEM Edge Delivery Services Sidekick Integration
- * Only visible to systems/browsers where the AEM Sidekick extension is installed.
- * Provides in-browser Sidekick toolbar with:
- *  - Environment Switcher (Local Dev, Preview, Live)
- *  - Publish to Live (calls Adobe Admin API)
- *  - Preview & Code Sync
- *  - Quick Project Plugins (Categories, PLP, My Garage)
- *  - Persistent collapse/expand state & keyboard shortcut (Ctrl+Shift+S)
+ * Integration and custom handlers for the default Adobe AEM Sidekick extension (<aem-sidekick>).
+ * Extends the default Sidekick with:
+ *  - "🚀 Publish to Live" custom action (calls Adobe Admin API)
+ *  - "👁️ View Preview" / "🚀 View Live" one-click environment switcher
+ *  - "⚡ Sync Code" cache bus purging
+ *  - Native event hooks (published, env-switched)
  */
 
 const REPO_CONFIG = {
   owner: 'prateek654321',
   repo: 'gsf-poc',
   ref: 'main',
-  project: 'GSF Car Parts',
   devHost: 'localhost:3000',
   previewHost: 'main--gsf-poc--prateek654321.aem.page',
   liveHost: 'main--gsf-poc--prateek654321.aem.live',
 };
-
-const STORAGE_KEYS = {
-  COLLAPSED: 'gsf_sidekick_collapsed',
-  OVERRIDE: 'aem_sidekick_enabled',
-};
-
-// Known Adobe AEM Sidekick Extension IDs
-const ALLOWED_EXTENSION_IDS = [
-  'igkmdomcgoebiipaifhmpfjhbjccggml', // Chrome Web Store - Production
-  'dfeojcdljkdfebmdcmilekahpcjkafdp', // Chrome Web Store - Dev/Beta
-  'iijidanmjddcjacejcjofhcjmgkkiijo', // Microsoft Edge Add-ons
-];
-
-/**
- * Detect current environment based on hostname
- */
-export function getCurrentEnv() {
-  const { host } = window.location;
-  if (host.includes('localhost') || host.includes('127.0.0.1')) {
-    return { id: 'dev', label: 'Local Dev', tag: 'DEV', color: '#ffb300' };
-  }
-  if (host.includes('.aem.page') || host.includes('.hlx.page')) {
-    return { id: 'preview', label: 'Preview', tag: 'PREVIEW', color: '#00b4d8' };
-  }
-  if (host.includes('.aem.live') || host.includes('.hlx.live')) {
-    return { id: 'live', label: 'Live', tag: 'LIVE', color: '#00c853' };
-  }
-  return { id: 'custom', label: host, tag: 'CUSTOM', color: '#7b2cbf' };
-}
-
-/**
- * Constructs URL for target environment preserving current path and query
- */
-export function getEnvironmentUrl(targetEnvId) {
-  const { pathname, search, hash } = window.location;
-  let targetOrigin = '';
-
-  switch (targetEnvId) {
-    case 'dev':
-      targetOrigin = `http://${REPO_CONFIG.devHost}`;
-      break;
-    case 'preview':
-      targetOrigin = `https://${REPO_CONFIG.previewHost}`;
-      break;
-    case 'live':
-      targetOrigin = `https://${REPO_CONFIG.liveHost}`;
-      break;
-    default:
-      targetOrigin = window.location.origin;
-  }
-
-  return `${targetOrigin}${pathname}${search}${hash}`;
-}
-
-/**
- * Switch current page to target environment
- */
-export function switchEnvironment(targetEnvId) {
-  const targetUrl = getEnvironmentUrl(targetEnvId);
-  if (targetUrl === window.location.href) return;
-  window.location.href = targetUrl;
-}
 
 /**
  * Normalizes resource path for Admin API (removes .html, ensures leading slash)
@@ -95,391 +30,205 @@ function getNormalizedResourcePath() {
 }
 
 /**
- * Publish current page and code to Live via Adobe Admin API
- */
-export async function publishToLive(onProgress) {
-  const cleanPath = getNormalizedResourcePath();
-  const { owner, repo, ref, liveHost } = REPO_CONFIG;
-  const adminBase = 'https://admin.hlx.page';
-
-  try {
-    if (onProgress) onProgress({ status: 'publishing', message: 'Publishing content to Live...' });
-
-    // 1. Publish content resource if applicable
-    const liveEndpoint = `${adminBase}/live/${owner}/${repo}/${ref}${cleanPath === '/' ? '/index' : cleanPath}`;
-    const liveRes = await fetch(liveEndpoint, { method: 'POST' }).catch(() => null);
-
-    if (onProgress) onProgress({ status: 'syncing', message: 'Synchronizing code bus cache...' });
-
-    // 2. Synchronize code cache on live/preview bus
-    const codeEndpoint = `${adminBase}/code/${owner}/${repo}/${ref}/*`;
-    const codeRes = await fetch(codeEndpoint, { method: 'POST' }).catch(() => null);
-
-    const liveUrl = `https://${liveHost}${window.location.pathname}${window.location.search}${window.location.hash}`;
-
-    return {
-      success: true,
-      liveUrl,
-      cleanPath,
-      codeStatus: codeRes?.status,
-      contentStatus: liveRes?.status,
-    };
-  } catch (err) {
-    console.error('Error publishing to live:', err);
-    return {
-      success: false,
-      error: err.message,
-    };
-  }
-}
-
-/**
- * Reload preview cache via Adobe Admin API
- */
-export async function reloadPreview(onProgress) {
-  const cleanPath = getNormalizedResourcePath();
-  const { owner, repo, ref } = REPO_CONFIG;
-  const adminBase = 'https://admin.hlx.page';
-
-  try {
-    if (onProgress) onProgress({ status: 'reloading', message: 'Updating preview cache...' });
-
-    const previewEndpoint = `${adminBase}/preview/${owner}/${repo}/${ref}${cleanPath === '/' ? '/index' : cleanPath}`;
-    await fetch(previewEndpoint, { method: 'POST' }).catch(() => null);
-
-    const codeEndpoint = `${adminBase}/code/${owner}/${repo}/${ref}/*`;
-    await fetch(codeEndpoint, { method: 'POST' }).catch(() => null);
-
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-}
-
-/**
- * Render notification toast
+ * Shows an Adobe Spectrum-style floating notification toast
  */
 function showToast(message, type = 'info', actionButton = null) {
-  let toastContainer = document.getElementById('aem-sidekick-toast');
-  if (!toastContainer) {
-    toastContainer = document.createElement('div');
-    toastContainer.id = 'aem-sidekick-toast';
-    document.body.appendChild(toastContainer);
+  let toast = document.getElementById('aem-sidekick-notification');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'aem-sidekick-notification';
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000000;
+      background: rgba(28, 28, 32, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 10px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      transition: all 0.25s ease;
+      opacity: 0;
+      transform: translateY(-10px);
+    `;
+    document.body.appendChild(toast);
   }
 
-  toastContainer.innerHTML = '';
-  toastContainer.className = `aem-sidekick-toast ${type} active`;
+  // Border accent
+  const borderColor = type === 'success' ? '#00c853' : (type === 'error' ? '#f44336' : '#00b4d8');
+  toast.style.borderLeft = `4px solid ${borderColor}`;
 
-  const msgSpan = document.createElement('span');
-  msgSpan.className = 'toast-msg';
-  msgSpan.innerHTML = message;
-  toastContainer.appendChild(msgSpan);
+  toast.innerHTML = `<span style="font-weight: 500;">${message}</span>`;
 
   if (actionButton) {
-    toastContainer.appendChild(actionButton);
+    actionButton.style.cssText = `
+      background: #00c853;
+      color: #ffffff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-block;
+    `;
+    toast.appendChild(actionButton);
   }
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
-  closeBtn.className = 'toast-close';
   closeBtn.innerHTML = '&times;';
+  closeBtn.style.cssText = `
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    margin-left: 6px;
+  `;
   closeBtn.onclick = () => {
-    toastContainer.classList.remove('active');
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
   };
-  toastContainer.appendChild(closeBtn);
+  toast.appendChild(closeBtn);
 
-  if (toastContainer._timeout) clearTimeout(toastContainer._timeout);
-  toastContainer._timeout = setTimeout(() => {
-    toastContainer.classList.remove('active');
+  // Animate in
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+
+  if (toast._timeout) clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
   }, 6000);
 }
 
 /**
- * Detects whether the AEM Sidekick extension is installed or active
+ * Publishes content and code to Live via Adobe Admin API
  */
-export async function isSidekickExtensionInstalled() {
-  // 1. Direct DOM check for extension custom elements
-  if (document.querySelector('aem-sidekick, helix-sidekick')) {
-    return true;
+async function publishToLive() {
+  const cleanPath = getNormalizedResourcePath();
+  const { owner, repo, ref, liveHost } = REPO_CONFIG;
+  const adminBase = 'https://admin.hlx.page';
+
+  showToast('🚀 Publishing page & code to Live...', 'info');
+
+  try {
+    const liveEndpoint = `${adminBase}/live/${owner}/${repo}/${ref}${cleanPath === '/' ? '/index' : cleanPath}`;
+    const liveRes = await fetch(liveEndpoint, { method: 'POST' }).catch(() => null);
+
+    const codeEndpoint = `${adminBase}/code/${owner}/${repo}/${ref}/*`;
+    await fetch(codeEndpoint, { method: 'POST' }).catch(() => null);
+
+    const liveUrl = `https://${liveHost}${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    const openBtn = document.createElement('a');
+    openBtn.href = liveUrl;
+    openBtn.target = '_blank';
+    openBtn.textContent = 'Open Live Page ➔';
+
+    showToast('✓ Page published to Live successfully!', 'success', openBtn);
+  } catch (err) {
+    showToast(`⚠️ Publish status: ${err.message}`, 'error');
   }
-
-  // 2. Global variable flags set by the AEM Sidekick extension content script
-  if (window.hlx?.sidekick || window.hlx?.projectMatches || window.hlx?.v7Installed || window.sessionStorage?.getItem('hlx-sk-project')) {
-    return true;
-  }
-
-  // 3. Explicit developer/author override via URL parameter ?sidekick=true or localStorage flag
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('sidekick') === 'true' || params.get('sidekick') === '1' || window.localStorage?.getItem(STORAGE_KEYS.OVERRIDE) === 'true') {
-    return true;
-  }
-
-  // 4. Ping known Adobe Sidekick extension IDs via Chrome/Edge runtime messaging
-  if (window.chrome && window.chrome.runtime && typeof window.chrome.runtime.sendMessage === 'function') {
-    try {
-      const pingPromises = ALLOWED_EXTENSION_IDS.map((extId) => new Promise((resolve) => {
-        try {
-          window.chrome.runtime.sendMessage(extId, { action: 'getSites' }, (response) => {
-            if (window.chrome.runtime.lastError) {
-              resolve(false);
-            } else {
-              resolve(Boolean(response));
-            }
-          });
-        } catch {
-          resolve(false);
-        }
-      }));
-
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(false), 300));
-      const results = await Promise.race([Promise.all(pingPromises), timeoutPromise]);
-      if (Array.isArray(results) && results.some(Boolean)) {
-        return true;
-      }
-    } catch {
-      // Ignore messaging exceptions
-    }
-  }
-
-  return false;
 }
 
 /**
- * Renders the Sidekick toolbar DOM
+ * Switches between preview and live environments
  */
-function renderSidekickToolbar() {
-  if (document.getElementById('aem-sidekick-ui')) return;
+function switchEnvironment(targetEnv) {
+  const { pathname, search, hash } = window.location;
+  let targetOrigin = '';
 
-  const currentEnv = getCurrentEnv();
-  const isCollapsed = localStorage.getItem(STORAGE_KEYS.COLLAPSED) === 'true';
-
-  // Container
-  const container = document.createElement('aside');
-  container.id = 'aem-sidekick-ui';
-  container.className = `aem-sidekick-bar ${isCollapsed ? 'collapsed' : ''}`;
-  container.setAttribute('aria-label', 'AEM Sidekick Toolbar');
-
-  // Inner markup
-  container.innerHTML = `
-    <!-- Minimized Floating Pill -->
-    <button type="button" class="sk-pill-toggle" id="sk-pill-toggle" title="Toggle AEM Sidekick (Ctrl+Shift+S)">
-      <span class="sk-pill-icon">⚡</span>
-      <span class="sk-pill-title">Sidekick</span>
-      <span class="sk-env-dot" style="background-color: ${currentEnv.color};"></span>
-      <span class="sk-env-pill-name">${currentEnv.tag}</span>
-    </button>
-
-    <!-- Expanded Toolbar -->
-    <div class="sk-toolbar-body">
-      <!-- Brand & Project -->
-      <div class="sk-group sk-brand-group">
-        <div class="sk-brand-badge">
-          <span class="sk-brand-logo">⚡</span>
-          <span class="sk-brand-name">${REPO_CONFIG.project}</span>
-        </div>
-        <div class="sk-env-indicator" style="--env-color: ${currentEnv.color}">
-          <span class="sk-env-indicator-dot"></span>
-          <span class="sk-env-indicator-label">${currentEnv.tag}</span>
-        </div>
-      </div>
-
-      <!-- Divider -->
-      <div class="sk-divider"></div>
-
-      <!-- Environment Switcher -->
-      <div class="sk-group sk-env-group">
-        <label class="sk-group-label">ENV:</label>
-        <div class="sk-env-buttons">
-          <button type="button" class="sk-btn sk-env-btn ${currentEnv.id === 'dev' ? 'active' : ''}" data-env="dev" title="Switch to Local Dev (localhost:3000)">
-            💻 Dev
-          </button>
-          <button type="button" class="sk-btn sk-env-btn ${currentEnv.id === 'preview' ? 'active' : ''}" data-env="preview" title="Switch to Feature Preview (*.aem.page)">
-            👁️ Preview
-          </button>
-          <button type="button" class="sk-btn sk-env-btn ${currentEnv.id === 'live' ? 'active' : ''}" data-env="live" title="Switch to Production Live (*.aem.live)">
-            🚀 Live
-          </button>
-        </div>
-      </div>
-
-      <!-- Divider -->
-      <div class="sk-divider"></div>
-
-      <!-- Actions: Publish & Reload -->
-      <div class="sk-group sk-actions-group">
-        <button type="button" class="sk-btn sk-btn-primary" id="sk-publish-btn" title="Publish current preview to live environment">
-          <span class="sk-btn-icon">🚀</span>
-          <span class="sk-btn-text">Publish to Live</span>
-        </button>
-        <button type="button" class="sk-btn" id="sk-reload-btn" title="Reload and refresh preview cache">
-          <span class="sk-btn-icon">🔄</span>
-          <span class="sk-btn-text">Reload</span>
-        </button>
-      </div>
-
-      <!-- Divider -->
-      <div class="sk-divider"></div>
-
-      <!-- Quick Navigation Plugins -->
-      <div class="sk-group sk-plugins-group">
-        <button type="button" class="sk-btn sk-plugin-btn" data-url="/categories.html" title="Jump to Categories Index">
-          📂 Categories
-        </button>
-        <button type="button" class="sk-btn sk-plugin-btn" data-url="/plp.html" title="Jump to Parts Catalog (PLP)">
-          📦 Parts PLP
-        </button>
-        <button type="button" class="sk-btn sk-plugin-btn" data-url="/plp.html?category_id=5392&category_name=Wiper%20Blades&vrm=GV57KCE" title="Jump to Wiper Blades for GV57KCE">
-          🚗 Wiper Fitment
-        </button>
-        <button type="button" class="sk-btn sk-plugin-btn" id="sk-copy-url-btn" title="Copy Current URL">
-          📋 Copy URL
-        </button>
-      </div>
-
-      <!-- Controls: Collapse -->
-      <div class="sk-group sk-controls-group">
-        <button type="button" class="sk-btn sk-btn-icon-only" id="sk-minimize-btn" title="Minimize Sidekick">
-          <span>&minus;</span>
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(container);
-
-  // Bind Events
-
-  // 1. Pill toggle
-  const pillBtn = container.querySelector('#sk-pill-toggle');
-  const minBtn = container.querySelector('#sk-minimize-btn');
-  const toggleCollapse = (force) => {
-    const willCollapse = typeof force === 'boolean' ? force : !container.classList.contains('collapsed');
-    container.classList.toggle('collapsed', willCollapse);
-    localStorage.setItem(STORAGE_KEYS.COLLAPSED, willCollapse ? 'true' : 'false');
-  };
-
-  pillBtn?.addEventListener('click', () => toggleCollapse(false));
-  minBtn?.addEventListener('click', () => toggleCollapse(true));
-
-  // Keyboard shortcut Ctrl+Shift+S / Cmd+Shift+S
-  window.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
-      e.preventDefault();
-      toggleCollapse();
-    }
-  });
-
-  // 2. Environment Switcher Buttons
-  container.querySelectorAll('.sk-env-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const targetEnv = btn.dataset.env;
-      if (targetEnv === currentEnv.id) {
-        showToast(`Already on <strong>${currentEnv.label}</strong> environment.`, 'info');
-        return;
-      }
-      showToast(`Switching to <strong>${targetEnv.toUpperCase()}</strong>...`, 'info');
-      setTimeout(() => switchEnvironment(targetEnv), 200);
-    });
-  });
-
-  // 3. Publish to Live Button
-  const publishBtn = container.querySelector('#sk-publish-btn');
-  publishBtn?.addEventListener('click', async () => {
-    publishBtn.disabled = true;
-    publishBtn.classList.add('loading');
-    const originalText = publishBtn.innerHTML;
-    publishBtn.innerHTML = '<span class="sk-spinner"></span> <span>Publishing...</span>';
-
-    showToast('🚀 Publishing page & syncing code to Live environment...', 'info');
-
-    const result = await publishToLive((prog) => {
-      publishBtn.querySelector('span:last-child').textContent = prog.message;
-    });
-
-    publishBtn.disabled = false;
-    publishBtn.classList.remove('loading');
-    publishBtn.innerHTML = originalText;
-
-    if (result.success) {
-      const openBtn = document.createElement('a');
-      openBtn.href = result.liveUrl;
-      openBtn.target = '_blank';
-      openBtn.className = 'toast-action-btn';
-      openBtn.textContent = 'Open Live Page ➔';
-
-      showToast('✓ Page published to Live successfully!', 'success', openBtn);
-    } else {
-      showToast(`⚠️ Publish completed with note: ${result.error || 'Check Admin API status'}`, 'error');
-    }
-  });
-
-  // 4. Reload Button
-  const reloadBtn = container.querySelector('#sk-reload-btn');
-  reloadBtn?.addEventListener('click', async () => {
-    reloadBtn.disabled = true;
-    reloadBtn.classList.add('loading');
-    reloadBtn.innerHTML = '<span class="sk-spinner"></span> <span>Reloading...</span>';
-
-    showToast('🔄 Purging preview cache...', 'info');
-    await reloadPreview();
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 600);
-  });
-
-  // 5. Plugin shortcuts
-  container.querySelectorAll('.sk-plugin-btn[data-url]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const url = btn.dataset.url;
-      if (url) window.location.href = url;
-    });
-  });
-
-  // 6. Copy URL button
-  const copyBtn = container.querySelector('#sk-copy-url-btn');
-  copyBtn?.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      showToast('📋 Current URL copied to clipboard!', 'success');
-    } catch {
-      showToast(window.location.href, 'info');
-    }
-  });
-
-  // Dispatch custom sidekick-ready event for any listeners
-  document.dispatchEvent(new CustomEvent('sidekick-ready', { detail: { env: currentEnv } }));
-}
-
-/**
- * Initialize and render the Sidekick toolbar ONLY if the extension is detected
- */
-export async function initSidekick() {
-  const isInstalled = await isSidekickExtensionInstalled();
-
-  if (isInstalled) {
-    renderSidekickToolbar();
+  if (targetEnv === 'preview') {
+    targetOrigin = `https://${REPO_CONFIG.previewHost}`;
+  } else if (targetEnv === 'live') {
+    targetOrigin = `https://${REPO_CONFIG.liveHost}`;
+  } else if (targetEnv === 'dev') {
+    targetOrigin = `http://${REPO_CONFIG.devHost}`;
+  } else {
     return;
   }
 
-  // Not detected yet: wait for extension to load asynchronously or inject element
-  const onSidekickReady = () => {
-    document.removeEventListener('sidekick-ready', onSidekickReady);
-    renderSidekickToolbar();
-  };
-  document.addEventListener('sidekick-ready', onSidekickReady, { once: true });
+  const targetUrl = `${targetOrigin}${pathname}${search}${hash}`;
+  if (targetUrl !== window.location.href) {
+    showToast(`Switching to ${targetEnv.toUpperCase()}...`, 'info');
+    setTimeout(() => {
+      window.location.href = targetUrl;
+    }, 200);
+  }
+}
 
-  // MutationObserver to catch <aem-sidekick> or <helix-sidekick> injected by extension
-  const observer = new MutationObserver((mutations, obs) => {
-    if (document.querySelector('aem-sidekick, helix-sidekick') || window.hlx?.projectMatches) {
-      obs.disconnect();
-      renderSidekickToolbar();
+/**
+ * Attach listeners to the default AEM Sidekick element
+ * @param {Element} sk The <aem-sidekick> or <helix-sidekick> DOM element
+ */
+function attachSidekickListeners(sk) {
+  if (!sk || sk._gsfListenersAttached) return;
+  sk._gsfListenersAttached = true;
+
+  // 1. Custom Action: Publish to Live
+  sk.addEventListener('custom:publish-live', () => {
+    publishToLive();
+  });
+
+  // 2. Custom Action: Switch to Preview
+  sk.addEventListener('custom:switch-preview', () => {
+    switchEnvironment('preview');
+  });
+
+  // 3. Custom Action: Switch to Live
+  sk.addEventListener('custom:switch-live', () => {
+    switchEnvironment('live');
+  });
+
+  // 4. Custom Action: Sync Code
+  sk.addEventListener('custom:sync-code', async () => {
+    showToast('⚡ Purging code bus cache...', 'info');
+    try {
+      const codeEndpoint = `https://admin.hlx.page/code/${REPO_CONFIG.owner}/${REPO_CONFIG.repo}/${REPO_CONFIG.ref}/*`;
+      await fetch(codeEndpoint, { method: 'POST' });
+      showToast('✓ Code cache purged successfully!', 'success');
+    } catch (err) {
+      showToast(`Error syncing code: ${err.message}`, 'error');
     }
   });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
 
-  // Clean up observer after 5s if extension is not present
-  setTimeout(() => {
-    observer.disconnect();
-  }, 5000);
+  // 5. Default Sidekick Event: Native published
+  sk.addEventListener('published', async () => {
+    try {
+      const codeEndpoint = `https://admin.hlx.page/code/${REPO_CONFIG.owner}/${REPO_CONFIG.repo}/${REPO_CONFIG.ref}/*`;
+      await fetch(codeEndpoint, { method: 'POST' });
+    } catch {
+      // Ignore
+    }
+  });
+}
+
+/**
+ * Initializes listeners on the default Adobe AEM Sidekick
+ */
+export function initSidekick() {
+  const sk = document.querySelector('aem-sidekick, helix-sidekick');
+  if (sk) {
+    attachSidekickListeners(sk);
+  } else {
+    document.addEventListener('sidekick-ready', () => {
+      const sidekickEl = document.querySelector('aem-sidekick, helix-sidekick');
+      if (sidekickEl) {
+        attachSidekickListeners(sidekickEl);
+      }
+    }, { once: true });
+  }
 }
