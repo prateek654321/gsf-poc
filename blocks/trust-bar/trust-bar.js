@@ -1,6 +1,6 @@
 export default async function decorate(block) {
   block.innerHTML = `
-    <div class="trust-bar-container">
+    <div class="trust-bar-grid">
       <div class="trust-item">
         <div class="trust-icon">🚚</div>
         <div class="trust-text">

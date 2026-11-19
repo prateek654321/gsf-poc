@@ -868,19 +868,147 @@
 
 @media (max-width: 900px) {
   .header .header-poc-bar,
-  .header .header-promo-strip {
-    display: none;
-  }
-  .header .header-brand-bar {
-    flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-  .header .header-search-form {
-    order: 3;
-    max-width: 100%;
-    width: 100%;
-  }
+  .header .header-promo-strip,
   .header .header-branch-link {
     display: none;
+  }
+
+  .header .header-brand-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 0.875rem;
+    gap: 0.5rem;
+  }
+
+  /* Row 1: Logo on Left */
+  .header .header-logo {
+    order: 1;
+    flex-shrink: 0;
+  }
+
+  .header .logo-badge-red {
+    font-size: 1.35rem;
+    padding: 0.15rem 0.45rem;
+  }
+
+  .header .logo-sub {
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+  }
+
+  .header .logo-strapline {
+    font-size: 0.45rem;
+    letter-spacing: 0.5px;
+  }
+
+  .header .logo-poc-pill {
+    display: none;
+  }
+
+  /* Row 1: Garage on Right */
+  .header .header-garage-widget {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .header .header-garage-btn {
+    padding: 0.35rem 0.5rem;
+    gap: 0.35rem;
+  }
+
+  .header .header-garage-btn .garage-k {
+    display: none;
+  }
+
+  .header .header-garage-btn .garage-v {
+    max-width: 110px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Row 1: Actions (Account & Basket) */
+  .header .header-actions {
+    order: 3;
+    gap: 0.35rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .header .header-account-link .action-label {
+    display: none;
+  }
+
+  .header .header-basket .basket-text-wrap {
+    display: none;
+  }
+
+  .header .header-action-item {
+    padding: 0.375rem 0.5rem;
+    font-size: 1.15rem;
+  }
+
+  /* Row 2: Search Form - 100% full width */
+  .header .header-search-form {
+    order: 10;
+    width: 100%;
+    flex: 0 0 100%;
+    max-width: 100%;
+    margin: 0.25rem 0 0;
+    box-sizing: border-box;
+  }
+
+  .header .header-search-input {
+    min-width: 0;
+    flex: 1;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .header .header-search-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+  }
+
+  /* Row 3: Nav bar - Swipeable Horizontal Chips */
+  .header .header-nav-container {
+    padding: 0 0.5rem;
+  }
+
+  .header .header-nav-list {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0.375rem 0.25rem;
+    gap: 0.35rem;
+  }
+
+  .header .header-nav-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header .header-nav-link {
+    padding: 0.375rem 0.625rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    border-radius: var(--radius-sm, 6px);
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .header .all-categories-item {
+    margin-left: 0;
+  }
+
+  .header .all-categories-link {
+    padding: 0.375rem 0.625rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
   }
 }

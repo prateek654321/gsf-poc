@@ -106,15 +106,19 @@ export default async function decorate(block) {
   block.innerHTML = `
     <div class="plp-layout ${isInitialParent ? 'is-subcategory-view' : ''}">
       <!-- Sidebar Filters (Only for Leaf Categories & Searches) -->
-      <aside class="plp-sidebar" aria-label="Product Filters" ${isInitialParent ? 'style="display:none;"' : ''}>
-        <div class="sidebar-header">
+      <aside class="plp-sidebar is-mobile-collapsed" aria-label="Product Filters" ${isInitialParent ? 'style="display:none;"' : ''}>
+        <div class="sidebar-header" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle Filter Options">
           <div class="sidebar-title-box">
             <span class="sidebar-icon">⚙️</span>
             <h3>Filter Parts</h3>
+            <span class="sidebar-active-badge" style="display:none;"></span>
           </div>
-          <button type="button" class="btn-clear-filters" style="display:none;" title="Clear all active filters">
-            Clear All
-          </button>
+          <div class="sidebar-header-right">
+            <button type="button" class="btn-clear-filters" style="display:none;" title="Clear all active filters">
+              Clear All
+            </button>
+            <span class="sidebar-mobile-toggle-icon" aria-hidden="true">▼</span>
+          </div>
         </div>
         <div class="plp-facets-container">
           ${getSidebarSkeletonsHtml()}
@@ -205,6 +209,25 @@ export default async function decorate(block) {
   const pagination = block.querySelector('.plp-pagination');
   const facetsContainer = block.querySelector('.plp-facets-container');
   const clearFiltersBtn = block.querySelector('.btn-clear-filters');
+  const sidebarHeader = block.querySelector('.sidebar-header');
+  const sidebarActiveBadge = block.querySelector('.sidebar-active-badge');
+
+  if (sidebarHeader) {
+    const toggleMobileSidebar = (e) => {
+      if (e.target.closest('.btn-clear-filters')) return;
+      if (window.innerWidth < 992) {
+        const isCollapsed = sidebar.classList.toggle('is-mobile-collapsed');
+        sidebarHeader.setAttribute('aria-expanded', (!isCollapsed).toString());
+      }
+    };
+    sidebarHeader.addEventListener('click', toggleMobileSidebar);
+    sidebarHeader.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleMobileSidebar(e);
+      }
+    });
+  }
 
   // View Mode: 'fitted' (default when vehicle is active) vs 'all' (all products)
   let initialStored = getStoredVehicle();
@@ -260,7 +283,11 @@ export default async function decorate(block) {
     const breadcrumbsEl = block.querySelector('.plp-category-breadcrumbs');
     const subcatsEl = block.querySelector('.plp-subcategories-bar');
     const stored = getStoredVehicle();
-    const vrmQuery = stored.vrm ? `&vrm=${encodeURIComponent(stored.vrm)}` : '';
+    const vrmParam = stored.vrm ? `vrm=${encodeURIComponent(stored.vrm)}` : '';
+    const appendVrm = (url) => {
+      if (!vrmParam) return url;
+      return url + (url.includes('?') ? `&${vrmParam}` : `?${vrmParam}`);
+    };
 
     if (breadcrumbsEl && navInfo?.breadcrumbs?.length > 0) {
       breadcrumbsEl.innerHTML = navInfo.breadcrumbs.map((b, idx) => {
@@ -268,7 +295,7 @@ export default async function decorate(block) {
         if (isLast) {
           return `<span class="bc-current" aria-current="page">${b.name}</span>`;
         }
-        return `<a href="${b.href}${vrmQuery}" class="bc-link">${b.name}</a><span class="bc-sep">/</span>`;
+        return `<a href="${appendVrm(b.href)}" class="bc-link">${b.name}</a><span class="bc-sep">/</span>`;
       }).join(' ');
     }
 
@@ -282,7 +309,7 @@ export default async function decorate(block) {
           ${siblings.map((sub) => {
             const isActive = String(sub.id) === String(categoryId) || sub.active;
             return `
-              <a href="${sub.href}${vrmQuery}" class="subcat-pill ${isActive ? 'active' : ''}">
+              <a href="${appendVrm(sub.href)}" class="subcat-pill ${isActive ? 'active' : ''}">
                 <span>${sub.name}</span>
               </a>
             `;
@@ -474,6 +501,17 @@ export default async function decorate(block) {
 
   function renderActiveFilterPills() {
     const activeKeys = Object.keys(activeFilters);
+    const totalActiveCount = activeKeys.reduce((acc, k) => acc + (activeFilters[k]?.length || 0), 0);
+    if (sidebarActiveBadge) {
+      if (totalActiveCount > 0) {
+        sidebarActiveBadge.textContent = `${totalActiveCount}`;
+        sidebarActiveBadge.style.display = 'inline-block';
+      } else {
+        sidebarActiveBadge.textContent = '';
+        sidebarActiveBadge.style.display = 'none';
+      }
+    }
+
     if (activeKeys.length === 0) {
       activeFiltersBar.style.display = 'none';
       activeFiltersBar.innerHTML = '';
