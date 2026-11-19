@@ -1,5 +1,6 @@
 /**
  * AEM Edge Delivery Services Sidekick Integration
+ * Only visible to systems/browsers where the AEM Sidekick extension is installed.
  * Provides in-browser Sidekick toolbar with:
  *  - Environment Switcher (Local Dev, Preview, Live)
  *  - Publish to Live (calls Adobe Admin API)
@@ -20,7 +21,15 @@ const REPO_CONFIG = {
 
 const STORAGE_KEYS = {
   COLLAPSED: 'gsf_sidekick_collapsed',
+  OVERRIDE: 'aem_sidekick_enabled',
 };
+
+// Known Adobe AEM Sidekick Extension IDs
+const ALLOWED_EXTENSION_IDS = [
+  'igkmdomcgoebiipaifhmpfjhbjccggml', // Chrome Web Store - Production
+  'dfeojcdljkdfebmdcmilekahpcjkafdp', // Chrome Web Store - Dev/Beta
+  'iijidanmjddcjacejcjofhcjmgkkiijo', // Microsoft Edge Add-ons
+];
 
 /**
  * Detect current environment based on hostname
@@ -91,7 +100,7 @@ function getNormalizedResourcePath() {
 export async function publishToLive(onProgress) {
   const cleanPath = getNormalizedResourcePath();
   const { owner, repo, ref, liveHost } = REPO_CONFIG;
-  const adminBase = `https://admin.hlx.page`;
+  const adminBase = 'https://admin.hlx.page';
 
   try {
     if (onProgress) onProgress({ status: 'publishing', message: 'Publishing content to Live...' });
@@ -107,9 +116,6 @@ export async function publishToLive(onProgress) {
     const codeRes = await fetch(codeEndpoint, { method: 'POST' }).catch(() => null);
 
     const liveUrl = `https://${liveHost}${window.location.pathname}${window.location.search}${window.location.hash}`;
-
-    const isSuccess = (liveRes && (liveRes.status === 200 || liveRes.status === 204)) ||
-                      (codeRes && (codeRes.status === 200 || codeRes.status === 202));
 
     return {
       success: true,
@@ -133,7 +139,7 @@ export async function publishToLive(onProgress) {
 export async function reloadPreview(onProgress) {
   const cleanPath = getNormalizedResourcePath();
   const { owner, repo, ref } = REPO_CONFIG;
-  const adminBase = `https://admin.hlx.page`;
+  const adminBase = 'https://admin.hlx.page';
 
   try {
     if (onProgress) onProgress({ status: 'reloading', message: 'Updating preview cache...' });
@@ -189,9 +195,59 @@ function showToast(message, type = 'info', actionButton = null) {
 }
 
 /**
- * Initialize and render the Sidekick toolbar in DOM
+ * Detects whether the AEM Sidekick extension is installed or active
  */
-export function initSidekick() {
+export async function isSidekickExtensionInstalled() {
+  // 1. Direct DOM check for extension custom elements
+  if (document.querySelector('aem-sidekick, helix-sidekick')) {
+    return true;
+  }
+
+  // 2. Global variable flags set by the AEM Sidekick extension content script
+  if (window.hlx?.sidekick || window.hlx?.projectMatches || window.hlx?.v7Installed || window.sessionStorage?.getItem('hlx-sk-project')) {
+    return true;
+  }
+
+  // 3. Explicit developer/author override via URL parameter ?sidekick=true or localStorage flag
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('sidekick') === 'true' || params.get('sidekick') === '1' || window.localStorage?.getItem(STORAGE_KEYS.OVERRIDE) === 'true') {
+    return true;
+  }
+
+  // 4. Ping known Adobe Sidekick extension IDs via Chrome/Edge runtime messaging
+  if (window.chrome && window.chrome.runtime && typeof window.chrome.runtime.sendMessage === 'function') {
+    try {
+      const pingPromises = ALLOWED_EXTENSION_IDS.map((extId) => new Promise((resolve) => {
+        try {
+          window.chrome.runtime.sendMessage(extId, { action: 'getSites' }, (response) => {
+            if (window.chrome.runtime.lastError) {
+              resolve(false);
+            } else {
+              resolve(Boolean(response));
+            }
+          });
+        } catch {
+          resolve(false);
+        }
+      }));
+
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(false), 300));
+      const results = await Promise.race([Promise.all(pingPromises), timeoutPromise]);
+      if (Array.isArray(results) && results.some(Boolean)) {
+        return true;
+      }
+    } catch {
+      // Ignore messaging exceptions
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Renders the Sidekick toolbar DOM
+ */
+function renderSidekickToolbar() {
   if (document.getElementById('aem-sidekick-ui')) return;
 
   const currentEnv = getCurrentEnv();
@@ -332,7 +388,7 @@ export function initSidekick() {
     publishBtn.disabled = true;
     publishBtn.classList.add('loading');
     const originalText = publishBtn.innerHTML;
-    publishBtn.innerHTML = `<span class="sk-spinner"></span> <span>Publishing...</span>`;
+    publishBtn.innerHTML = '<span class="sk-spinner"></span> <span>Publishing...</span>';
 
     showToast('🚀 Publishing page & syncing code to Live environment...', 'info');
 
@@ -351,7 +407,7 @@ export function initSidekick() {
       openBtn.className = 'toast-action-btn';
       openBtn.textContent = 'Open Live Page ➔';
 
-      showToast(`✓ Page published to Live successfully!`, 'success', openBtn);
+      showToast('✓ Page published to Live successfully!', 'success', openBtn);
     } else {
       showToast(`⚠️ Publish completed with note: ${result.error || 'Check Admin API status'}`, 'error');
     }
@@ -362,8 +418,7 @@ export function initSidekick() {
   reloadBtn?.addEventListener('click', async () => {
     reloadBtn.disabled = true;
     reloadBtn.classList.add('loading');
-    const origHtml = reloadBtn.innerHTML;
-    reloadBtn.innerHTML = `<span class="sk-spinner"></span> <span>Reloading...</span>`;
+    reloadBtn.innerHTML = '<span class="sk-spinner"></span> <span>Reloading...</span>';
 
     showToast('🔄 Purging preview cache...', 'info');
     await reloadPreview();
@@ -394,4 +449,37 @@ export function initSidekick() {
 
   // Dispatch custom sidekick-ready event for any listeners
   document.dispatchEvent(new CustomEvent('sidekick-ready', { detail: { env: currentEnv } }));
+}
+
+/**
+ * Initialize and render the Sidekick toolbar ONLY if the extension is detected
+ */
+export async function initSidekick() {
+  const isInstalled = await isSidekickExtensionInstalled();
+
+  if (isInstalled) {
+    renderSidekickToolbar();
+    return;
+  }
+
+  // Not detected yet: wait for extension to load asynchronously or inject element
+  const onSidekickReady = () => {
+    document.removeEventListener('sidekick-ready', onSidekickReady);
+    renderSidekickToolbar();
+  };
+  document.addEventListener('sidekick-ready', onSidekickReady, { once: true });
+
+  // MutationObserver to catch <aem-sidekick> or <helix-sidekick> injected by extension
+  const observer = new MutationObserver((mutations, obs) => {
+    if (document.querySelector('aem-sidekick, helix-sidekick') || window.hlx?.projectMatches) {
+      obs.disconnect();
+      renderSidekickToolbar();
+    }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  // Clean up observer after 5s if extension is not present
+  setTimeout(() => {
+    observer.disconnect();
+  }, 5000);
 }
