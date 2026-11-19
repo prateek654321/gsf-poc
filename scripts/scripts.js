@@ -8,6 +8,10 @@ import {
   loadCSS,
 } from './aem.js';
 import { loadConfig } from './config.js';
+import { initSidekick } from './sidekick.js';
+
+// Initialize default Adobe AEM Sidekick event listeners immediately
+initSidekick();
 
 // Clean URL: Keep homepage URL as clean '/' without index.html
 if (window.location.pathname.endsWith('/index.html') || window.location.pathname === '/index.html') {
@@ -129,13 +133,6 @@ async function loadLazy(doc) {
 
   loadCSS(`${window.hlx?.codeBasePath || ''}/styles/styles.css`);
   initPageTransitions();
-
-  // Attach custom handlers and extra features to the default Adobe AEM Sidekick
-  import('./sidekick.js').then(({ initSidekick }) => {
-    initSidekick();
-  }).catch((err) => {
-    console.warn('Could not initialize Sidekick listeners:', err);
-  });
 }
 
 async function loadPage() {

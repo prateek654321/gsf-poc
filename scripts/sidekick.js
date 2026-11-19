@@ -176,9 +176,7 @@ export function switchEnvironment(targetEnv) {
   const targetUrl = `${targetOrigin}${pathname}${search}${hash}`;
   if (targetUrl !== window.location.href) {
     showToast(`Switching to ${targetEnv.toUpperCase()}...`, 'info');
-    setTimeout(() => {
-      window.location.href = targetUrl;
-    }, 150);
+    window.location.assign(targetUrl);
   }
 }
 
