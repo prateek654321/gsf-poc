@@ -3,7 +3,7 @@ import {
   clearVehicleState,
   getVehicleMotAndHealth,
   normalizeVrm,
-  fetchVehicleProducts,
+  lookupVrmAndFetchSkus,
   selectManualVehicle,
   UK_MANUAL_VEHICLE_DATABASE,
 } from '../../scripts/vehicle-lookup.js';
@@ -561,7 +561,7 @@ export default async function decorate(block) {
     findBtn.disabled = true;
 
     try {
-      const result = await fetchVehicleProducts(vrm);
+      const result = await lookupVrmAndFetchSkus(vrm);
       findBtn.disabled = false;
       errorMsg.textContent = '';
 
