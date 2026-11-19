@@ -6,7 +6,7 @@ import { getMetadata } from './aem.js';
  * spreadsheet-driven config.json, or window.CONFIG.
  */
 const DEFAULT_CONFIG = {
-  magentoGraphqlEndpoint: 'https://mcprod.gsfcarparts.com/graphql',
+  magentoGraphqlEndpoint: 'https://mcstaging.gsfcarparts.com/graphql',
   vrmDetailsEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vrmdetails',
   fitmentSkusEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/skus',
   vehicleCompatibilityEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vehiclecompatibility',
@@ -14,7 +14,7 @@ const DEFAULT_CONFIG = {
   modelsEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/models',
   vehicleMetadataEndpoint: 'https://gsf-carparts-staging.agilecollab.com/rest/default/V1/gsf-vrm/vehiclemetadata',
   catalogApiEndpoint: '', // Destination for future Adobe App Builder + API Mesh endpoint
-  placeholderImage: 'https://mcprod.gsfcarparts.com/media/catalog/product/placeholder/default/product_placeholder_2.png',
+  placeholderImage: 'https://mcstaging.gsfcarparts.com/media/catalog/product/placeholder/default/product_placeholder_2.png',
   specialCoupon: 'PARTS30',
   storeCode: 'default',
   pageSizeDefault: 15,
