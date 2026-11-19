@@ -5,10 +5,13 @@
   "liveHost": "main--gsf-poc--prateek654321.aem.live",
   "plugins": [
     {
-      "id": "my-garage",
-      "title": "🚗 My Garage",
+      "id": "publish",
+      "title": "Publish to Live",
       "pinned": true,
-      "url": "/plp.html?category_id=5461&category_name=Braking&vrm=AK18WEX"
+      "environments": [
+        "preview",
+        "dev"
+      ]
     },
     {
       "id": "categories",
@@ -21,6 +24,12 @@
       "title": "📦 All Parts",
       "pinned": true,
       "url": "/plp.html"
+    },
+    {
+      "id": "my-garage",
+      "title": "🚗 My Garage",
+      "pinned": true,
+      "url": "/plp.html?category_id=5461&category_name=Braking&vrm=AK18WEX"
     }
   ]
 }
