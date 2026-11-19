@@ -7,7 +7,7 @@ import {
   loadSection,
   loadCSS,
 } from './aem.js';
-import { loadConfig } from './config.js?v=2';
+import { loadConfig } from './config.js';
 
 // Clean URL: Keep homepage URL as clean '/' without index.html
 if (window.location.pathname.endsWith('/index.html') || window.location.pathname === '/index.html') {
