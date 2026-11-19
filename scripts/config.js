@@ -106,7 +106,7 @@ export function getConfig() {
  */
 export async function loadConfig() {
   try {
-    const res = await fetch('/config.json', { cache: 'no-cache' });
+    const res = await fetch('/config.json?v=mcstaging', { cache: 'no-cache' });
     if (res.ok) {
       const json = await res.json();
       window.CONFIG = { ...window.CONFIG, ...json };
