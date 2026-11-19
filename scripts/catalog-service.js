@@ -1,7 +1,7 @@
 import { fetchProducts, fetchProductsWithBrandSort, fetchVrmDetails } from './magento-api.js';
 import { getStoredVehicle, fetchCategoryFitmentSkus } from './vehicle-lookup.js';
 import { resolveCategoryComponentIds, getCategoryTargets } from './category-component-map.js';
-import { getConfig } from './config.js';
+import { getConfig } from './config.js?v=2';
 
 /**
  * Catalog & Fitment Service Layer

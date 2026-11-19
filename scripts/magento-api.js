@@ -1,4 +1,4 @@
-import { getConfig } from './config.js';
+import { getConfig } from './config.js?v=2';
 
 /**
  * Magento GraphQL and REST API Client for GSF Car Parts
