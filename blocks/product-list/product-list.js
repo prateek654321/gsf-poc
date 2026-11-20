@@ -94,7 +94,7 @@ export default async function decorate(block) {
   const categoryName = urlParams.get('category_name') || '';
   const searchPhrase = urlParams.get('q') || urlParams.get('search') || '';
   let currentPage = parseInt(urlParams.get('page'), 10) || 1;
-  let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 10;
+  let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
   let sortField = 'position';
   let sortDir = 'ASC';
   let activeFilters = {};
@@ -173,9 +173,9 @@ export default async function decorate(block) {
             <div class="plp-control-group">
               <label for="plp-pagesize-select">Show:</label>
               <select id="plp-pagesize-select" class="plp-select">
-                <option value="10">10 per page</option>
-                <option value="20">20 per page</option>
-                <option value="50">50 per page</option>
+                ${(appConfig.pageSizeOptions || [15, 30, 45]).map((opt) => `
+                  <option value="${opt}" ${Number(opt) === Number(pageSize) ? 'selected' : ''}>${opt} per page</option>
+                `).join('')}
               </select>
             </div>
           </div>

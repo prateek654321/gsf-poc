@@ -451,7 +451,7 @@ export async function fetchCatalogProducts({
 } = {}) {
   const config = getConfig();
   const currentPage = Math.max(1, parseInt(page, 10) || 1);
-  const targetPageSize = Math.max(1, parseInt(pageSize, 10) || config.pageSizeDefault || 10);
+  const targetPageSize = Math.max(1, parseInt(pageSize, 10) || config.pageSizeDefault || 15);
 
   // 1. If Adobe App Builder + API Mesh endpoint is configured, delegate directly
   if (config.catalogApiEndpoint) {

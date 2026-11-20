@@ -372,7 +372,7 @@ The central configuration file controls all remote integration points:
   "specialCoupon": "PARTS30",
   "storeCode": "default",
   "pageSizeDefault": 15,
-  "pageSizeOptions": [15, 30, 60]
+  "pageSizeOptions": [15, 30, 45]
 }
 ```
 

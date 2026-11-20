@@ -17,8 +17,8 @@ const DEFAULT_CONFIG = {
   placeholderImage: 'https://mcstaging.gsfcarparts.com/media/catalog/product/placeholder/default/product_placeholder_2.png',
   specialCoupon: 'PARTS30',
   storeCode: 'default',
-  pageSizeDefault: 10,
-  pageSizeOptions: [10, 20, 50],
+  pageSizeDefault: 15,
+  pageSizeOptions: [15, 30, 45],
 };
 
 let activeConfig = null;
