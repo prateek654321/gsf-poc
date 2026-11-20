@@ -5,6 +5,7 @@ import {
   lookupVrmAndFetchSkus,
 } from '../../scripts/vehicle-lookup.js';
 import { isUniversalProduct } from '../../scripts/catalog-service.js';
+import { sanitizeSearchQuery, escapeHtml } from '../../scripts/sanitize.js';
 
 function renderPdpSkeleton() {
   return `
@@ -83,7 +84,8 @@ export default function decorate(block) {
   block.innerHTML = renderPdpSkeleton();
 
   const urlParams = new URLSearchParams(window.location.search);
-  const sku = urlParams.get('sku') || 'MPRMBP2285';
+  const rawSku = urlParams.get('sku') || 'MPRMBP2285';
+  const sku = sanitizeSearchQuery(rawSku) || 'MPRMBP2285';
 
   async function loadPdp() {
     let product = null;
@@ -97,7 +99,7 @@ export default function decorate(block) {
       block.innerHTML = `
         <div class="pdp-error">
           <h2>Product Unavailable</h2>
-          <p>Unable to load product with SKU: <strong>${sku}</strong>.</p>
+          <p>Unable to load product with SKU: <strong>${escapeHtml(sku)}</strong>.</p>
           <a href="/plp.html" class="btn btn-primary">Browse All Parts</a>
         </div>
       `;

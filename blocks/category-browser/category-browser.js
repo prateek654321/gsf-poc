@@ -1,4 +1,5 @@
 import { fetchCategories } from '../../scripts/magento-api.js';
+import { sanitizeSearchQuery, escapeHtml } from '../../scripts/sanitize.js';
 
 // Comprehensive icon mapping for automotive categories
 const CATEGORY_ICONS = {
@@ -303,8 +304,10 @@ export default async function decorate(block) {
 
   // Filter input logic with debounce and search across ALL levels
   filterInput.addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase().trim();
-    clearBtn.style.display = term ? 'block' : 'none';
+    const rawVal = e.target.value;
+    const cleanTerm = sanitizeSearchQuery(rawVal);
+    const term = cleanTerm.toLowerCase();
+    clearBtn.style.display = rawVal.trim() ? 'block' : 'none';
 
     if (!term) {
       if (selectedParent) renderSubcategories(selectedParent);
@@ -328,17 +331,17 @@ export default async function decorate(block) {
     });
 
     subGrid.innerHTML = '';
-    activeTitle.textContent = `Search results for "${term}"`;
+    activeTitle.textContent = `Search results for "${cleanTerm}"`;
     activeCount.textContent = `(${matchingSubs.length} matching categories)`;
-    shopDeptBtn.href = `/plp.html?q=${encodeURIComponent(term)}`;
-    shopDeptBtn.querySelector('span:first-child').textContent = `Search All Products for "${term}"`;
+    shopDeptBtn.href = `/plp.html?q=${encodeURIComponent(cleanTerm)}`;
+    shopDeptBtn.querySelector('span:first-child').textContent = `Search All Products for "${cleanTerm}"`;
 
     if (matchingSubs.length === 0) {
       subGrid.innerHTML = `
         <div class="no-matches">
-          <p>No categories match "<strong>${term}</strong>" in ${selectedParent?.name || 'this department'}.</p>
-          <a href="/plp.html?q=${encodeURIComponent(term)}" class="btn-direct-shop">
-            Search All Products for "${term}" ➔
+          <p>No categories match "<strong>${escapeHtml(cleanTerm)}</strong>" in ${selectedParent?.name || 'this department'}.</p>
+          <a href="/plp.html?q=${encodeURIComponent(cleanTerm)}" class="btn-direct-shop">
+            Search All Products for "${escapeHtml(cleanTerm)}" ➔
           </a>
         </div>
       `;

@@ -1,4 +1,5 @@
 import { fetchCategories } from '../../scripts/magento-api.js';
+import { sanitizeSearchQuery, escapeHtml } from '../../scripts/sanitize.js';
 import {
   getStoredVehicle,
   getGarageVehicles,
@@ -69,19 +70,20 @@ export default async function decorate(block) {
   `;
 
   const urlParams = new URLSearchParams(window.location.search);
-  const currentQ = urlParams.get('q') || urlParams.get('search') || '';
+  const rawQ = urlParams.get('q') || urlParams.get('search') || '';
+  const currentQ = sanitizeSearchQuery(rawQ);
 
   const searchForm = document.createElement('form');
   searchForm.className = 'header-search-form';
   searchForm.innerHTML = `
-    <input type="search" placeholder="Search by part name, brand or SKU..." class="header-search-input" value="${currentQ.replace(/"/g, '&quot;')}" />
+    <input type="search" placeholder="Search by part name, brand or SKU..." class="header-search-input" value="${escapeHtml(currentQ)}" />
     <button type="submit" class="header-search-btn">
       <span>Search</span>
     </button>
   `;
   searchForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const query = searchForm.querySelector('input').value.trim();
+    const query = sanitizeSearchQuery(searchForm.querySelector('input').value);
     if (query) {
       window.location.href = `/plp.html?q=${encodeURIComponent(query)}`;
     } else if (window.location.pathname.includes('plp.html')) {

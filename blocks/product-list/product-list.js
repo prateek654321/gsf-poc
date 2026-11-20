@@ -9,6 +9,7 @@ import { getStoredVehicle, lookupVrmAndFetchSkus } from '../../scripts/vehicle-l
 import { getCategoryNavInfo } from '../../scripts/category-component-map.js?v=4';
 import { getConfig } from '../../scripts/config.js';
 import { showPageLoader, hidePageLoader } from '../../scripts/scripts.js';
+import { sanitizeSearchQuery, escapeHtml } from '../../scripts/sanitize.js';
 
 function getSidebarSkeletonsHtml() {
   return `
@@ -92,7 +93,7 @@ export default async function decorate(block) {
   const urlParams = new URLSearchParams(window.location.search);
   const categoryId = urlParams.get('category_id') || '';
   const categoryName = urlParams.get('category_name') || '';
-  let searchPhrase = urlParams.get('q') || urlParams.get('search') || '';
+  let searchPhrase = sanitizeSearchQuery(urlParams.get('q') || urlParams.get('search') || '');
   let currentPage = parseInt(urlParams.get('page'), 10) || 1;
   let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
   let sortField = 'position';
@@ -163,7 +164,7 @@ export default async function decorate(block) {
           <div class="plp-toolbar-controls">
             <div class="plp-control-group plp-search-control">
               <form class="plp-inline-search-form" role="search">
-                <input type="search" id="plp-search-input" class="plp-search-input" placeholder="Search by SKU or name..." value="${searchPhrase.replace(/"/g, '&quot;')}" aria-label="Search products" />
+                <input type="search" id="plp-search-input" class="plp-search-input" placeholder="Search by SKU or name..." value="${escapeHtml(searchPhrase)}" aria-label="Search products" />
                 <button type="submit" class="btn-plp-search" title="Search">🔍</button>
                 ${searchPhrase ? '<button type="button" class="btn-clear-plp-search" title="Clear search">✕</button>' : ''}
               </form>
@@ -301,7 +302,7 @@ export default async function decorate(block) {
         breadcrumbsEl.innerHTML = `
           <a href="${appendVrm('/')}" class="bc-link">Home</a><span class="bc-sep">/</span>
           <a href="${appendVrm('/plp.html')}" class="bc-link">All Parts</a><span class="bc-sep">/</span>
-          <span class="bc-current" aria-current="page">Search: "${searchPhrase}"</span>
+          <span class="bc-current" aria-current="page">Search: "${escapeHtml(searchPhrase)}"</span>
         `;
       } else if (navInfo?.breadcrumbs?.length > 0) {
         breadcrumbsEl.innerHTML = navInfo.breadcrumbs.map((b, idx) => {
@@ -313,7 +314,7 @@ export default async function decorate(block) {
         }).join(' ');
 
         if (searchPhrase) {
-          breadcrumbsEl.innerHTML += ` <span class="bc-current" aria-current="page">Search: "${searchPhrase}"</span>`;
+          breadcrumbsEl.innerHTML += ` <span class="bc-current" aria-current="page">Search: "${escapeHtml(searchPhrase)}"</span>`;
         }
       }
     }
@@ -970,9 +971,11 @@ export default async function decorate(block) {
         const targetLabel = isManual
           ? (result.vehicleSummary || `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim() || 'Selected Vehicle')
           : `${result.vehicleSummary || result.vrm} (${result.vrm})`;
-        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${searchPhrase}</strong>" matching <strong>${targetLabel}</strong>`;
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${escapeHtml(searchPhrase)}</strong>" matching <strong>${targetLabel}</strong>`;
+      } else if (searchPhrase && stored.hasVehicle && viewMode === 'all') {
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${escapeHtml(searchPhrase)}</strong>" (All Products)`;
       } else if (searchPhrase) {
-        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${searchPhrase}</strong>"`;
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${escapeHtml(searchPhrase)}</strong>"`;
       } else if (viewMode === 'fitted' && stored.hasVehicle) {
         const scopeText = categoryName ? `${categoryName} ` : '';
         const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
@@ -990,30 +993,55 @@ export default async function decorate(block) {
 
       grid.innerHTML = '';
       if (items.length === 0) {
-        grid.innerHTML = `
-          <div class="plp-no-results">
-            <div class="no-results-icon">🔍</div>
-            <h3>No products found ${searchPhrase ? `for "<strong>${searchPhrase}</strong>"` : ''}</h3>
-            <p>Try searching by part name (e.g. Brake Pads, Oil, Battery), brand, or exact SKU.</p>
-            <button type="button" class="btn btn-primary btn-reset-search">Browse All Parts</button>
-          </div>
-        `;
-        const resetBtn = grid.querySelector('.btn-reset-search');
-        if (resetBtn) {
-          resetBtn.addEventListener('click', () => {
-            activeFilters = {};
-            searchPhrase = '';
-            currentPage = 1;
-            const p = new URLSearchParams(window.location.search);
-            p.delete('q');
-            p.delete('search');
-            window.history.pushState({}, '', `${window.location.pathname}${p.toString() ? `?${p.toString()}` : ''}`);
-            const inlineInput = block.querySelector('#plp-search-input');
-            if (inlineInput) inlineInput.value = '';
-            const headerInput = document.querySelector('.header-search-input');
-            if (headerInput) headerInput.value = '';
-            loadProducts();
-          });
+        if (stored.hasVehicle && viewMode === 'fitted' && (result?.allCount || 0) > 0) {
+          const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
+          const targetLabel = isManual
+            ? (result.vehicleSummary || `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim() || 'your vehicle')
+            : `${result.vehicleSummary || result.vrm} (${result.vrm})`;
+          const allCountFormatted = (result?.allCount || 0).toLocaleString();
+          grid.innerHTML = `
+            <div class="plp-no-results">
+              <div class="no-results-icon">🚗</div>
+              <h3>No vehicle-fit products found ${searchPhrase ? `for "<strong>${escapeHtml(searchPhrase)}</strong>"` : ''}</h3>
+              <p>We found 0 parts verified to fit <strong>${targetLabel}</strong> ${searchPhrase ? `matching "<strong>${escapeHtml(searchPhrase)}</strong>"` : ''}.</p>
+              <p>However, there are <strong>${allCountFormatted}</strong> products available in <strong>All Products</strong>.</p>
+              <button type="button" class="btn btn-primary btn-switch-to-all">Switch to All Products (${allCountFormatted})</button>
+            </div>
+          `;
+          const switchBtn = grid.querySelector('.btn-switch-to-all');
+          if (switchBtn) {
+            switchBtn.addEventListener('click', () => {
+              viewMode = 'all';
+              currentPage = 1;
+              loadProducts();
+            });
+          }
+        } else {
+          grid.innerHTML = `
+            <div class="plp-no-results">
+              <div class="no-results-icon">🔍</div>
+              <h3>No products found ${searchPhrase ? `for "<strong>${escapeHtml(searchPhrase)}</strong>"` : ''}</h3>
+              <p>Try searching by part name (e.g. Brake Pads, Oil, Battery), brand, or exact SKU.</p>
+              <button type="button" class="btn btn-primary btn-reset-search">Browse All Parts</button>
+            </div>
+          `;
+          const resetBtn = grid.querySelector('.btn-reset-search');
+          if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+              activeFilters = {};
+              searchPhrase = '';
+              currentPage = 1;
+              const p = new URLSearchParams(window.location.search);
+              p.delete('q');
+              p.delete('search');
+              window.history.pushState({}, '', `${window.location.pathname}${p.toString() ? `?${p.toString()}` : ''}`);
+              const inlineInput = block.querySelector('#plp-search-input');
+              if (inlineInput) inlineInput.value = '';
+              const headerInput = document.querySelector('.header-search-input');
+              if (headerInput) headerInput.value = '';
+              loadProducts();
+            });
+          }
         }
       } else {
         items.forEach((p) => {
@@ -1090,7 +1118,8 @@ export default async function decorate(block) {
   if (searchFormInline && searchInputInline) {
     searchFormInline.addEventListener('submit', (e) => {
       e.preventDefault();
-      const val = searchInputInline.value.trim();
+      const val = sanitizeSearchQuery(searchInputInline.value);
+      searchInputInline.value = val;
       searchPhrase = val;
       currentPage = 1;
 

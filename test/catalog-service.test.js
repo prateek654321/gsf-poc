@@ -5,6 +5,7 @@ import {
   isUniversalProduct,
   getBrandNameFromQuality,
   getQualityCodeForBrand,
+  getCategoryTotalCount,
 } from '../scripts/catalog-service.js';
 
 test('isUniversalProduct: detects automotive universal products correctly', () => {
@@ -41,4 +42,11 @@ test('catalog search: recognizes SKU patterns vs general search phrases', () => 
   assert.equal(isSkuPattern('ADLADB114393'), true);
   assert.equal(isSkuPattern('BABBKB6027'), true);
   assert.equal(isSkuPattern('Brake Disc Front Vented'), false);
+});
+
+test('getCategoryTotalCount: returns cached or calculated category total', async () => {
+  const count = await getCategoryTotalCount('5461');
+  assert.equal(count, 47799);
+  const defaultCount = await getCategoryTotalCount(null);
+  assert.equal(defaultCount, 24161);
 });
