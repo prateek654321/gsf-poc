@@ -113,49 +113,60 @@
   margin: 0 2px;
 }
 
-/* Right Section: 4 Compact Dropdowns */
+/* Right Section: Compact Dropdowns (Dynamic Make, Model, Year, Engine, Body, HP, Fuel) */
 .vehicle-search .vrm-dropdown-group {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .vehicle-search .compact-select-box {
-  flex: 1;
-  min-width: 100px;
+  flex: 1 1 100px;
+  min-width: 95px;
   background: #ffffff;
   border: 1.5px solid #cbd5e1;
   border-radius: 6px;
-  padding: 3px 8px;
-  height: 42px;
+  padding: 4px 10px;
+  height: 46px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   box-sizing: border-box;
   transition: all 0.15s ease-in-out;
   position: relative;
+  cursor: pointer;
 }
 
-.vehicle-search .compact-select-box:hover {
+.vehicle-search .compact-select-box:hover:not(.is-disabled) {
   border-color: #94a3b8;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
 }
 
-.vehicle-search .compact-select-box:focus-within {
+.vehicle-search .compact-select-box:focus-within:not(.is-disabled) {
   border-color: #002f6e;
-  box-shadow: 0 0 0 2px rgba(0, 47, 110, 0.15);
+  box-shadow: 0 0 0 2.5px rgba(0, 47, 110, 0.16);
+}
+
+.vehicle-search .compact-select-box.is-disabled {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .vehicle-search .compact-select-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  color: #111827;
+  color: #1e293b;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  line-height: 1;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
   margin: 0 0 2px 0;
   pointer-events: none;
+  user-select: none;
 }
 
 .vehicle-search .compact-select-wrapper {
@@ -170,30 +181,44 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 12px;
-  color: #1f2937;
-  font-weight: 400;
-  padding: 0 16px 0 0;
+  font-size: 13.5px;
+  color: #475569;
+  font-weight: 500;
+  padding: 0 18px 0 0;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
   text-overflow: ellipsis;
   white-space: nowrap;
+  overflow: hidden;
+  font-family: inherit;
+  line-height: 1.2;
+}
+
+.vehicle-search .compact-select.has-value,
+.vehicle-search .compact-select-box.has-value .compact-select {
+  color: #0f172a;
+  font-weight: 600;
 }
 
 .vehicle-search .compact-select:disabled {
-  color: #9ca3af;
+  color: #94a3b8;
   cursor: not-allowed;
 }
 
 .vehicle-search .compact-chevron {
   position: absolute;
-  right: 0;
+  right: 1px;
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
+  transition: opacity 0.15s ease;
+}
+
+.vehicle-search .compact-select-box.is-disabled .compact-chevron {
+  opacity: 0.35;
 }
 
 .vehicle-search .vrm-search-message {
@@ -261,14 +286,16 @@
 @media (max-width: 1024px) {
   .vehicle-search .vehicle-search-compact-form {
     flex-wrap: wrap;
+    gap: 12px;
   }
 
   .vehicle-search .vrm-dropdown-group {
     width: 100%;
+    flex-wrap: wrap;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .vehicle-search .vrm-left-section {
     width: 100%;
     justify-content: flex-start;
@@ -276,7 +303,7 @@
 
   .vehicle-search .vrm-dropdown-group {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
     width: 100%;
     gap: 8px;
   }

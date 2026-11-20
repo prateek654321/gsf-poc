@@ -401,19 +401,23 @@ export function selectManualVehicle(make, model, year, engineName, extraMeta = {
     model,
     modelVersion: extraMeta.modelVersionTitle || extraMeta.modelVersion || model,
     description: `${make} ${model} ${extraMeta.modelVersionTitle ? `(${extraMeta.modelVersionTitle}) ` : ''}${engineName}`.trim(),
-    fuel: engineObj.fuel,
-    engineSize: engineObj.size,
+    fuel: extraMeta.fuel || engineObj.fuel,
+    engineSize: extraMeta.engineSize || engineObj.size,
     year: cleanYear,
     colour: 'Any',
     bodyStyle: extraMeta.bodyStyle || 'Standard',
+    power: extraMeta.power || '',
     isManualSelect: true,
     gCodePartialIDs: extraMeta.gCodePartialIDs || [],
     makeId: extraMeta.makeId,
     modelId: extraMeta.modelId,
     modelVersionId: extraMeta.modelVersionId,
+    engineSizeId: extraMeta.engineSizeId,
+    bodyStyleId: extraMeta.bodyStyleId,
+    powerId: extraMeta.powerId,
   };
 
-  const summary = `${make} • ${model} • ${vehicle.engineSize} • ${vehicle.fuel} • ${cleanYear}`;
+  const summary = `${make} • ${model} • ${vehicle.engineSize}${vehicle.bodyStyle && vehicle.bodyStyle !== 'Standard' && vehicle.bodyStyle !== 'Hatchback' ? ` • ${vehicle.bodyStyle}` : ''}${vehicle.power ? ` • ${vehicle.power}` : ''} • ${vehicle.fuel} • ${cleanYear}`;
   const sessionId = extraMeta.sessionId || '5IR0BBbSC4sS';
   const componentIds = extraMeta.componentIds || engineObj.componentIds || ['814', '816', '817', '871', '872', '804', '819', '857', '870', '806', '820'];
   const validSkus = extraMeta.validSkus || engineObj.validSkus || [];

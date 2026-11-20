@@ -53,6 +53,16 @@ function formatSlimVehicleTitle(vehicle, vrm) {
     parts.push(eng);
   }
 
+  // Body Style (e.g. Estate)
+  if (vehicle.bodyStyle && vehicle.bodyStyle !== 'Standard' && vehicle.bodyStyle !== 'Hatchback') {
+    parts.push(vehicle.bodyStyle);
+  }
+
+  // Power (e.g. 138 bhp)
+  if (vehicle.power) {
+    parts.push(vehicle.power);
+  }
+
   // Fuel type
   if (vehicle.fuel) parts.push(vehicle.fuel);
 
@@ -188,12 +198,20 @@ export default async function decorate(block) {
     select.id = `compact-${fieldId}`;
     select.className = 'compact-select';
     select.innerHTML = `<option value="">${placeholderText}</option>`;
-    if (fieldId !== 'make') select.disabled = true;
+    if (fieldId !== 'make') {
+      select.disabled = true;
+      box.classList.add('is-disabled');
+    }
 
     wrap.innerHTML = CHEVRON_RED_SVG;
     wrap.prepend(select);
 
     box.append(label, wrap);
+
+    select.addEventListener('change', () => {
+      syncSelectState(select);
+    });
+
     return { box, select };
   }
 
@@ -223,10 +241,306 @@ export default async function decorate(block) {
     modelName: '',
     modelVersionId: null,
     modelVersionTitle: '',
+    engineSizeId: null,
+    engineSizeName: '',
+    bodyStyleId: null,
+    bodyStyleName: '',
+    powerId: null,
+    powerName: '',
+    fuelTypeId: null,
+    fuelTypeName: '',
     gCodePartialIDs: [],
     sessionId: '',
     engineData: null,
   };
+
+  // Sync select visual styling (has value vs empty placeholder vs disabled)
+  function syncSelectState(select) {
+    if (!select) return;
+    const box = select.closest('.compact-select-box');
+    if (select.value) {
+      select.classList.add('has-value');
+      box?.classList.add('has-value');
+    } else {
+      select.classList.remove('has-value');
+      box?.classList.remove('has-value');
+    }
+    if (select.disabled) {
+      box?.classList.add('is-disabled');
+    } else {
+      box?.classList.remove('is-disabled');
+    }
+  }
+
+  // Dynamic filter boxes cleanup: removes any dynamic dropdown rendered after fieldId
+  const DYNAMIC_FIELDS = ['body', 'hp', 'fuel'];
+  function removeDynamicBoxesAfter(fieldId) {
+    const allFields = ['make', 'model', 'year', 'engine', 'body', 'hp', 'fuel'];
+    const idx = allFields.indexOf(fieldId);
+    if (idx === -1) return;
+    const toRemove = allFields.slice(idx + 1).filter((f) => DYNAMIC_FIELDS.includes(f));
+    toRemove.forEach((f) => {
+      const box = dropdownGroup.querySelector(`.compact-select-box[data-field="${f}"]`);
+      if (box) box.remove();
+      if (f === 'body') {
+        currentSelection.bodyStyleId = null;
+        currentSelection.bodyStyleName = '';
+      }
+      if (f === 'hp') {
+        currentSelection.powerId = null;
+        currentSelection.powerName = '';
+      }
+      if (f === 'fuel') {
+        currentSelection.fuelTypeId = null;
+        currentSelection.fuelTypeName = '';
+      }
+    });
+  }
+
+  // Finalizes the vehicle selection and navigates or reloads catalog
+  function finalizeVehicleSelection() {
+    const makeName = currentSelection.makeName || makeSelect.selectedOptions[0]?.dataset?.name || makeSelect.value;
+    const modelName = currentSelection.modelName || modelSelect.selectedOptions[0]?.dataset?.name || modelSelect.value;
+    const yearTitle = currentSelection.modelVersionTitle || yearSelect.selectedOptions[0]?.dataset?.title || yearSelect.value;
+    const engineVal = currentSelection.engineSizeName || engineSelect.value;
+
+    showPageLoader();
+
+    // If Ford Fiesta 1.25 selected, ensure authentic G-Codes
+    let gCodes = currentSelection.gCodePartialIDs;
+    if ((!gCodes || gCodes.length === 0) && makeName.toLowerCase() === 'ford' && modelName.toLowerCase().includes('fiesta')) {
+      gCodes = [174623, 174625, 174626, 174630, 174634, 174638, 174651, 174656, 174661, 174665, 174669, 174671, 174673, 174678, 174681];
+    }
+
+    selectManualVehicle(makeName, modelName, yearTitle, engineVal, {
+      makeId: currentSelection.makeId,
+      modelId: currentSelection.modelId,
+      modelVersionId: currentSelection.modelVersionId,
+      modelVersionTitle: currentSelection.modelVersionTitle,
+      engineSizeId: currentSelection.engineSizeId,
+      engineSize: currentSelection.engineData?.size || engineVal,
+      bodyStyleId: currentSelection.bodyStyleId,
+      bodyStyle: currentSelection.bodyStyleName || currentSelection.engineData?.bodyStyle || 'Standard',
+      powerId: currentSelection.powerId,
+      power: currentSelection.powerName || '',
+      fuel: currentSelection.fuelTypeName || currentSelection.engineData?.fuel,
+      gCodePartialIDs: gCodes,
+      sessionId: currentSelection.sessionId || 'vdzY2NskTPnf',
+    });
+
+    const isCatalogPage = window.location.pathname.includes('plp') || window.location.pathname.includes('pdp');
+    if (!isCatalogPage) {
+      window.location.href = '/plp.html?category_id=5392&category_name=Wiper%20Blades';
+    }
+  }
+
+  // Dynamically renders Body Style dropdown if options available
+  function renderBodyStyleDropdown(bodyStyles) {
+    removeDynamicBoxesAfter('body');
+
+    const { box: bodyBox, select: bodySelect } = buildSelectBox('body', 'BODY', 'Select Body');
+    dropdownGroup.append(bodyBox);
+
+    bodySelect.innerHTML = '<option value="">Select Body</option>';
+    bodyStyles.forEach((b) => {
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      opt.textContent = b.title;
+      opt.dataset.name = b.title;
+      bodySelect.append(opt);
+    });
+    bodySelect.disabled = false;
+    syncSelectState(bodySelect);
+
+    bodySelect.addEventListener('change', async () => {
+      syncSelectState(bodySelect);
+      removeDynamicBoxesAfter('body');
+
+      const bodyId = bodySelect.value;
+      const bodyName = bodySelect.selectedOptions[0]?.dataset?.name || bodySelect.value;
+      if (!bodyId) return;
+
+      currentSelection.bodyStyleId = bodyId;
+      currentSelection.bodyStyleName = bodyName;
+
+      try {
+        const metaRes = await fetchVehicleMetadata({
+          modelId: currentSelection.modelId,
+          manufacturerId: currentSelection.makeId,
+          modelVersionId: currentSelection.modelVersionId,
+          engineSizeId: currentSelection.engineSizeId,
+          bodyStyleId: bodyId,
+          isMvl: 1,
+          type: 'Car',
+        });
+
+        if (metaRes?.session?.sessionId) {
+          currentSelection.sessionId = metaRes.session.sessionId;
+        }
+        if (metaRes?.metaData?.gCodePartialIDs) {
+          currentSelection.gCodePartialIDs = metaRes.metaData.gCodePartialIDs;
+        }
+
+        await checkAndRenderDynamicSteps(metaRes?.metaData);
+      } catch (err) {
+        console.warn('Error after body style select:', err);
+        finalizeVehicleSelection();
+      }
+    });
+
+    // If only one body style option available, select automatically and proceed to next step
+    if (bodyStyles.length === 1) {
+      bodySelect.value = bodyStyles[0].id;
+      syncSelectState(bodySelect);
+      bodySelect.dispatchEvent(new Event('change'));
+    }
+  }
+
+  // Dynamically renders Power / HP dropdown if options available
+  function renderPowerDropdown(powers) {
+    removeDynamicBoxesAfter('hp');
+
+    const { box: hpBox, select: hpSelect } = buildSelectBox('hp', 'HP', 'Select HP');
+    dropdownGroup.append(hpBox);
+
+    hpSelect.innerHTML = '<option value="">Select HP</option>';
+    powers.forEach((p) => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.title;
+      opt.dataset.name = p.title;
+      hpSelect.append(opt);
+    });
+    hpSelect.disabled = false;
+    syncSelectState(hpSelect);
+
+    hpSelect.addEventListener('change', async () => {
+      syncSelectState(hpSelect);
+      removeDynamicBoxesAfter('hp');
+
+      const pId = hpSelect.value;
+      const pName = hpSelect.selectedOptions[0]?.dataset?.name || hpSelect.value;
+      if (!pId) return;
+
+      currentSelection.powerId = pId;
+      currentSelection.powerName = pName;
+
+      try {
+        const metaRes = await fetchVehicleMetadata({
+          modelId: currentSelection.modelId,
+          manufacturerId: currentSelection.makeId,
+          modelVersionId: currentSelection.modelVersionId,
+          engineSizeId: currentSelection.engineSizeId,
+          bodyStyleId: currentSelection.bodyStyleId || '',
+          powerId: pId,
+          isMvl: 1,
+          type: 'Car',
+        });
+
+        if (metaRes?.session?.sessionId) {
+          currentSelection.sessionId = metaRes.session.sessionId;
+        }
+        if (metaRes?.metaData?.gCodePartialIDs) {
+          currentSelection.gCodePartialIDs = metaRes.metaData.gCodePartialIDs;
+        }
+
+        const fuelTypes = metaRes?.metaData?.fuelTypes || [];
+        if (fuelTypes.length > 1) {
+          renderFuelDropdown(fuelTypes);
+        } else {
+          if (fuelTypes.length === 1) {
+            currentSelection.fuelTypeId = fuelTypes[0].id;
+            currentSelection.fuelTypeName = fuelTypes[0].title;
+          }
+          finalizeVehicleSelection();
+        }
+      } catch (err) {
+        console.warn('Error after power select:', err);
+        finalizeVehicleSelection();
+      }
+    });
+
+    // If only one power option available, select automatically and proceed
+    if (powers.length === 1) {
+      hpSelect.value = powers[0].id;
+      syncSelectState(hpSelect);
+      hpSelect.dispatchEvent(new Event('change'));
+    }
+  }
+
+  // Dynamically renders Fuel dropdown if multiple fuel types exist
+  function renderFuelDropdown(fuelTypes) {
+    removeDynamicBoxesAfter('fuel');
+
+    const { box: fuelBox, select: fuelSelect } = buildSelectBox('fuel', 'FUEL', 'Select Fuel');
+    dropdownGroup.append(fuelBox);
+
+    fuelSelect.innerHTML = '<option value="">Select Fuel</option>';
+    fuelTypes.forEach((f) => {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = f.title;
+      opt.dataset.name = f.title;
+      fuelSelect.append(opt);
+    });
+    fuelSelect.disabled = false;
+    syncSelectState(fuelSelect);
+
+    fuelSelect.addEventListener('change', () => {
+      syncSelectState(fuelSelect);
+      const fId = fuelSelect.value;
+      const fName = fuelSelect.selectedOptions[0]?.dataset?.name || fuelSelect.value;
+      if (!fId) return;
+
+      currentSelection.fuelTypeId = fId;
+      currentSelection.fuelTypeName = fName;
+      finalizeVehicleSelection();
+    });
+
+    if (fuelTypes.length === 1) {
+      fuelSelect.value = fuelTypes[0].id;
+      syncSelectState(fuelSelect);
+      fuelSelect.dispatchEvent(new Event('change'));
+    }
+  }
+
+  // Orchestrates dynamic steps: Body and HP appear ONLY when options are available
+  async function checkAndRenderDynamicSteps(metaData) {
+    const bodyStyles = metaData?.bodyStyles || [];
+    const powers = metaData?.powers || [];
+    const fuelTypes = metaData?.fuelTypes || [];
+
+    // Step A: Check Body Styles (only if not already chosen)
+    if (!currentSelection.bodyStyleId) {
+      if (bodyStyles.length > 0) {
+        renderBodyStyleDropdown(bodyStyles);
+        return;
+      }
+    }
+
+    // Step B: Check Powers / HP (only if not already chosen)
+    if (!currentSelection.powerId) {
+      if (powers.length > 0) {
+        renderPowerDropdown(powers);
+        return;
+      }
+    }
+
+    // Step C: Check Fuel Types
+    if (!currentSelection.fuelTypeId) {
+      if (fuelTypes.length > 1) {
+        renderFuelDropdown(fuelTypes);
+        return;
+      }
+      if (fuelTypes.length === 1) {
+        currentSelection.fuelTypeId = fuelTypes[0].id;
+        currentSelection.fuelTypeName = fuelTypes[0].title;
+      }
+    }
+
+    // All available steps completed! Finalize vehicle selection
+    finalizeVehicleSelection();
+  }
 
   // Render initial pill if vehicle is already saved
   if (stored.hasVehicle) {
@@ -269,16 +583,29 @@ export default async function decorate(block) {
         });
 
         makeSelect.append(popularGroup, allGroup);
+
+        if (makes.length === 1) {
+          makeSelect.value = makes[0].id;
+          syncSelectState(makeSelect);
+          makeSelect.dispatchEvent(new Event('change'));
+        }
       } else {
         // Fallback to UK manual vehicle database
         makeSelect.innerHTML = '<option value="">Select Make</option>';
-        Object.keys(UK_MANUAL_VEHICLE_DATABASE).forEach((m) => {
+        const keys = Object.keys(UK_MANUAL_VEHICLE_DATABASE);
+        keys.forEach((m) => {
           const opt = document.createElement('option');
           opt.value = m;
           opt.textContent = m;
           opt.dataset.name = m;
           makeSelect.append(opt);
         });
+
+        if (keys.length === 1) {
+          makeSelect.value = keys[0];
+          syncSelectState(makeSelect);
+          makeSelect.dispatchEvent(new Event('change'));
+        }
       }
     } catch (err) {
       console.warn('Could not load makes, using fallback:', err);
@@ -295,6 +622,9 @@ export default async function decorate(block) {
 
   // 2. Cascade: Make change -> fetch Models
   makeSelect.addEventListener('change', async () => {
+    syncSelectState(makeSelect);
+    removeDynamicBoxesAfter('make');
+
     const makeId = makeSelect.value;
     const makeName = makeSelect.selectedOptions[0]?.dataset?.name || makeSelect.value;
 
@@ -304,6 +634,9 @@ export default async function decorate(block) {
     modelSelect.disabled = true;
     yearSelect.disabled = true;
     engineSelect.disabled = true;
+    syncSelectState(modelSelect);
+    syncSelectState(yearSelect);
+    syncSelectState(engineSelect);
     errorMsg.textContent = '';
 
     if (!makeId) return;
@@ -315,6 +648,14 @@ export default async function decorate(block) {
       modelName: '',
       modelVersionId: null,
       modelVersionTitle: '',
+      engineSizeId: null,
+      engineSizeName: '',
+      bodyStyleId: null,
+      bodyStyleName: '',
+      powerId: null,
+      powerName: '',
+      fuelTypeId: null,
+      fuelTypeName: '',
       gCodePartialIDs: [],
       sessionId: '',
       engineData: null,
@@ -322,6 +663,7 @@ export default async function decorate(block) {
 
     modelSelect.innerHTML = '<option value="">Loading models...</option>';
     modelSelect.disabled = true;
+    syncSelectState(modelSelect);
 
     try {
       const models = await fetchModelsByManufacturer(makeId);
@@ -336,9 +678,18 @@ export default async function decorate(block) {
           modelSelect.append(opt);
         });
         modelSelect.disabled = false;
+        syncSelectState(modelSelect);
+
+        // Auto-select if only 1 model
+        if (models.length === 1) {
+          modelSelect.value = models[0].id;
+          syncSelectState(modelSelect);
+          modelSelect.dispatchEvent(new Event('change'));
+        }
       } else if (UK_MANUAL_VEHICLE_DATABASE[makeName]) {
+        const dbModels = Object.keys(UK_MANUAL_VEHICLE_DATABASE[makeName]);
         modelSelect.innerHTML = '<option value="">Select Model</option>';
-        Object.keys(UK_MANUAL_VEHICLE_DATABASE[makeName]).forEach((m) => {
+        dbModels.forEach((m) => {
           const opt = document.createElement('option');
           opt.value = m;
           opt.textContent = m;
@@ -346,17 +697,29 @@ export default async function decorate(block) {
           modelSelect.append(opt);
         });
         modelSelect.disabled = false;
+        syncSelectState(modelSelect);
+
+        if (dbModels.length === 1) {
+          modelSelect.value = dbModels[0];
+          syncSelectState(modelSelect);
+          modelSelect.dispatchEvent(new Event('change'));
+        }
       } else {
         modelSelect.innerHTML = '<option value="">No models found</option>';
+        syncSelectState(modelSelect);
       }
     } catch {
       modelSelect.innerHTML = '<option value="">Select Model</option>';
       modelSelect.disabled = false;
+      syncSelectState(modelSelect);
     }
   });
 
   // 3. Cascade: Model change -> fetch Generations / Years
   modelSelect.addEventListener('change', async () => {
+    syncSelectState(modelSelect);
+    removeDynamicBoxesAfter('model');
+
     const modelId = modelSelect.value;
     const modelName = modelSelect.selectedOptions[0]?.dataset?.name || modelSelect.value;
 
@@ -364,6 +727,8 @@ export default async function decorate(block) {
     engineSelect.innerHTML = '<option value="">Select Engine</option>';
     yearSelect.disabled = true;
     engineSelect.disabled = true;
+    syncSelectState(yearSelect);
+    syncSelectState(engineSelect);
     errorMsg.textContent = '';
 
     if (!modelId) return;
@@ -372,15 +737,25 @@ export default async function decorate(block) {
     currentSelection.modelName = modelName;
     currentSelection.modelVersionId = null;
     currentSelection.modelVersionTitle = '';
+    currentSelection.engineSizeId = null;
+    currentSelection.engineSizeName = '';
+    currentSelection.bodyStyleId = null;
+    currentSelection.bodyStyleName = '';
+    currentSelection.powerId = null;
+    currentSelection.powerName = '';
+    currentSelection.fuelTypeId = null;
+    currentSelection.fuelTypeName = '';
     currentSelection.gCodePartialIDs = [];
 
     yearSelect.innerHTML = '<option value="">Loading years...</option>';
     yearSelect.disabled = true;
+    syncSelectState(yearSelect);
 
     try {
       const metaRes = await fetchVehicleMetadata({
         modelId,
         manufacturerId: currentSelection.makeId,
+        isMvl: 1,
         type: 'Car',
       });
 
@@ -395,6 +770,14 @@ export default async function decorate(block) {
           yearSelect.append(opt);
         });
         yearSelect.disabled = false;
+        syncSelectState(yearSelect);
+
+        // Auto-select if only 1 year version (e.g. VW Bora!)
+        if (versions.length === 1) {
+          yearSelect.value = versions[0].id;
+          syncSelectState(yearSelect);
+          yearSelect.dispatchEvent(new Event('change'));
+        }
       } else if (UK_MANUAL_VEHICLE_DATABASE[currentSelection.makeName]?.[modelName]) {
         const years = UK_MANUAL_VEHICLE_DATABASE[currentSelection.makeName][modelName].years || [];
         yearSelect.innerHTML = '<option value="">Select Year</option>';
@@ -406,32 +789,54 @@ export default async function decorate(block) {
           yearSelect.append(opt);
         });
         yearSelect.disabled = false;
+        syncSelectState(yearSelect);
+
+        if (years.length === 1) {
+          yearSelect.value = years[0];
+          syncSelectState(yearSelect);
+          yearSelect.dispatchEvent(new Event('change'));
+        }
       } else {
         yearSelect.innerHTML = '<option value="2016">2016</option>';
         yearSelect.disabled = false;
+        syncSelectState(yearSelect);
       }
     } catch {
       yearSelect.innerHTML = '<option value="2016">2016</option>';
       yearSelect.disabled = false;
+      syncSelectState(yearSelect);
     }
   });
 
   // 4. Cascade: Year change -> fetch Engines & G-Codes
   yearSelect.addEventListener('change', async () => {
+    syncSelectState(yearSelect);
+    removeDynamicBoxesAfter('year');
+
     const mvId = yearSelect.value;
     const mvTitle = yearSelect.selectedOptions[0]?.dataset?.title || yearSelect.value;
 
     engineSelect.innerHTML = '<option value="">Select Engine</option>';
     engineSelect.disabled = true;
+    syncSelectState(engineSelect);
     errorMsg.textContent = '';
 
     if (!mvId) return;
 
     currentSelection.modelVersionId = mvId;
     currentSelection.modelVersionTitle = mvTitle;
+    currentSelection.engineSizeId = null;
+    currentSelection.engineSizeName = '';
+    currentSelection.bodyStyleId = null;
+    currentSelection.bodyStyleName = '';
+    currentSelection.powerId = null;
+    currentSelection.powerName = '';
+    currentSelection.fuelTypeId = null;
+    currentSelection.fuelTypeName = '';
 
     engineSelect.innerHTML = '<option value="">Loading engines...</option>';
     engineSelect.disabled = true;
+    syncSelectState(engineSelect);
 
     try {
       const metaRes = await fetchVehicleMetadata({
@@ -463,11 +868,21 @@ export default async function decorate(block) {
             const opt = document.createElement('option');
             opt.value = name;
             opt.textContent = name;
+            opt.dataset.engineId = s.id;
+            opt.dataset.engineTitle = s.title;
             opt.dataset.engineData = JSON.stringify({ name, size: s.title, fuel: fuelName, id: s.id });
             engineSelect.append(opt);
           }
         });
         engineSelect.disabled = false;
+        syncSelectState(engineSelect);
+
+        // Auto-select if only 1 engine option
+        if (sizes.length === 1) {
+          engineSelect.value = sizes[0].title;
+          syncSelectState(engineSelect);
+          engineSelect.dispatchEvent(new Event('change'));
+        }
       } else if (UK_MANUAL_VEHICLE_DATABASE[currentSelection.makeName]?.[currentSelection.modelName]) {
         const engines = UK_MANUAL_VEHICLE_DATABASE[currentSelection.makeName][currentSelection.modelName].engines || [];
         engineSelect.innerHTML = '<option value="">Select Engine</option>';
@@ -479,6 +894,13 @@ export default async function decorate(block) {
           engineSelect.append(opt);
         });
         engineSelect.disabled = false;
+        syncSelectState(engineSelect);
+
+        if (engines.length === 1) {
+          engineSelect.value = engines[0].name;
+          syncSelectState(engineSelect);
+          engineSelect.dispatchEvent(new Event('change'));
+        }
       } else {
         engineSelect.innerHTML = `
           <option value="">Select Engine</option>
@@ -488,6 +910,7 @@ export default async function decorate(block) {
           <option value="2.0 litres">2.0 litres</option>
         `;
         engineSelect.disabled = false;
+        syncSelectState(engineSelect);
       }
     } catch {
       engineSelect.innerHTML = `
@@ -496,46 +919,55 @@ export default async function decorate(block) {
         <option value="1.4 litres">1.4 litres</option>
       `;
       engineSelect.disabled = false;
+      syncSelectState(engineSelect);
     }
   });
 
-  // 5. Engine change -> Immediately activate vehicle & switch to pill
-  engineSelect.addEventListener('change', () => {
+  // 5. Engine change -> dynamically check for Body & HP (or finalize)
+  engineSelect.addEventListener('change', async () => {
+    syncSelectState(engineSelect);
+    removeDynamicBoxesAfter('engine');
+
     const engineVal = engineSelect.value;
     if (!engineVal) return;
 
+    const selectedOpt = engineSelect.selectedOptions[0];
+    const engineId = selectedOpt?.dataset?.engineId || '';
+    currentSelection.engineSizeId = engineId;
+    currentSelection.engineSizeName = engineVal;
+
     try {
-      const raw = engineSelect.selectedOptions[0]?.dataset?.engineData;
+      const raw = selectedOpt?.dataset?.engineData;
       if (raw) currentSelection.engineData = JSON.parse(raw);
     } catch {}
 
-    const makeName = currentSelection.makeName || makeSelect.selectedOptions[0]?.dataset?.name || makeSelect.value;
-    const modelName = currentSelection.modelName || modelSelect.selectedOptions[0]?.dataset?.name || modelSelect.value;
-    const yearTitle = currentSelection.modelVersionTitle || yearSelect.selectedOptions[0]?.dataset?.title || yearSelect.value;
-
-    showPageLoader();
-
-    // If Ford Fiesta 1.25 selected, ensure authentic G-Codes
-    let gCodes = currentSelection.gCodePartialIDs;
-    if ((!gCodes || gCodes.length === 0) && makeName.toLowerCase() === 'ford' && modelName.toLowerCase().includes('fiesta')) {
-      gCodes = [174623, 174625, 174626, 174630, 174634, 174638, 174651, 174656, 174661, 174665, 174669, 174671, 174673, 174678, 174681];
+    // If fallback without engineId, finalize directly
+    if (!engineId || !currentSelection.modelVersionId) {
+      finalizeVehicleSelection();
+      return;
     }
 
-    selectManualVehicle(makeName, modelName, yearTitle, engineVal, {
-      makeId: currentSelection.makeId,
-      modelId: currentSelection.modelId,
-      modelVersionId: currentSelection.modelVersionId,
-      modelVersionTitle: currentSelection.modelVersionTitle,
-      gCodePartialIDs: gCodes,
-      sessionId: currentSelection.sessionId || 'vdzY2NskTPnf',
-      fuel: currentSelection.engineData?.fuel,
-      engineSize: currentSelection.engineData?.size || engineVal,
-      bodyStyle: currentSelection.engineData?.bodyStyle || 'Hatchback',
-    });
+    try {
+      const metaRes = await fetchVehicleMetadata({
+        modelId: currentSelection.modelId,
+        manufacturerId: currentSelection.makeId,
+        modelVersionId: currentSelection.modelVersionId,
+        engineSizeId: engineId,
+        isMvl: 1,
+        type: 'Car',
+      });
 
-    const isCatalogPage = window.location.pathname.includes('plp') || window.location.pathname.includes('pdp');
-    if (!isCatalogPage) {
-      window.location.href = '/plp.html?category_id=5392&category_name=Wiper%20Blades';
+      if (metaRes?.session?.sessionId) {
+        currentSelection.sessionId = metaRes.session.sessionId;
+      }
+      if (metaRes?.metaData?.gCodePartialIDs) {
+        currentSelection.gCodePartialIDs = metaRes.metaData.gCodePartialIDs;
+      }
+
+      await checkAndRenderDynamicSteps(metaRes?.metaData);
+    } catch (err) {
+      console.warn('Error fetching metadata after engine select:', err);
+      finalizeVehicleSelection();
     }
   });
 
@@ -547,12 +979,19 @@ export default async function decorate(block) {
     const vrm = normalizeVrm(rawVal);
 
     if (!vrm) {
-      // If user filled manual selects, trigger engine select
+      // If user filled manual selects, validate any pending dynamic dropdown or finalize
       if (engineSelect.value) {
-        engineSelect.dispatchEvent(new Event('change'));
+        const emptySelect = Array.from(dropdownGroup.querySelectorAll('select:not([disabled])')).find((s) => !s.value);
+        if (emptySelect) {
+          emptySelect.focus();
+          const fieldName = emptySelect.id.replace('compact-', '').toUpperCase();
+          errorMsg.textContent = `Please select ${fieldName}.`;
+          return;
+        }
+        finalizeVehicleSelection();
         return;
       }
-      errorMsg.textContent = 'Please enter a valid UK registration number.';
+      errorMsg.textContent = 'Please enter a valid UK registration number or select vehicle details.';
       vrmInput?.focus();
       return;
     }
