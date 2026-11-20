@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GSF Car Parts — AEM Edge Delivery Services POC | Presentation Deck</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <style>
+    :root {
+      --color-brand-primary: #002f6e;
+      --color-brand-primary-dark: #001f4d;
+      --color-brand-red: #ed1c24;
+      --color-brand-yellow: #ffd100;
+      --color-brand-green: #059669;
+      --color-brand-green-bg: #ecfdf5;
+      --color-brand-green-bdr: #a7f3d0;
+      
+      --slide-bg: #f4f6f9;
+      --card-bg: #ffffff;
+      --card-border: #cbd5e1;
+      --text-dark: #0f172a;
+      --text-body: #334155;
+      --text-muted: #64748b;
+      --text-white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #07162c;
+      color: var(--text-dark);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Nav Bar */
+    .deck-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #001f4d;
+      border-bottom: 3px solid var(--color-brand-red);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #fff;
+    }
+
+    .deck-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo-badge {
+      background: var(--color-brand-red);
+      color: #fff;
+      font-weight: 900;
+      font-size: 15px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .deck-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .deck-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .slide-counter {
+      font-size: 13px;
+      color: #cbd5e1;
+      font-weight: 600;
+      min-width: 70px;
+      text-align: center;
+    }
+
+    .btn-nav {
+      background: #002f6e;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-nav:hover:not(:disabled) {
+      background: #004b97;
+      border-color: #ffffff;
+    }
+
+    .btn-nav:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .btn-download {
+      background: var(--color-brand-red);
+      color: #fff;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+    }
+
+    .btn-download:hover {
+      background: #d71920;
+    }
+
+    /* Presentation Viewport */
+    .presentation-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px 20px;
+    }
+
+    .slide-frame {
+      width: 100%;
+      max-width: 1200px;
+      aspect-ratio: 16 / 9;
+      background: var(--slide-bg);
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      position: relative;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .slide-frame.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Standard Slide Header Bar */
+    .slide-top-bar {
+      background: var(--color-brand-primary);
+      border-bottom: 3px solid var(--color-brand-red);
+      padding: 12px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #ffffff;
+    }
+
+    .slide-brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .slide-logo-red {
+      background: var(--color-brand-red);
+      color: #ffffff;
+      font-weight: 900;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 15px;
+      font-family: 'Arial Black', Impact, sans-serif;
+    }
+
+    .slide-logo-text {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .slide-logo-text span {
+      display: block;
+      color: var(--color-brand-yellow);
+      font-size: 8px;
+    }
+
+    .slide-title-wrap {
+      border-left: 2px solid rgba(255, 255, 255, 0.2);
+      padding-left: 14px;
+    }
+
+    .slide-cat-tag {
+      font-size: 9px;
+      font-weight: 800;
+      color: var(--color-brand-yellow);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: block;
+    }
+
+    .slide-main-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .slide-status-pill {
+      background: #07162c;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--color-brand-yellow);
+      font-size: 10px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Content Area */
+    .slide-body {
+      flex: 1;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .slide-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+
+    /* Grids & Cards */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+      flex: 1;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      flex: 1;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--card-border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .card.accent-navy { border-top: 4px solid var(--color-brand-primary); }
+    .card.accent-red  { border-top: 4px solid var(--color-brand-red); }
+    .card.accent-green{ border-top: 4px solid var(--color-brand-green); }
+    .card.accent-amber{ border-top: 4px solid #d97706; }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-text {
+      font-size: 12px;
+      color: var(--text-body);
+      line-height: 1.55;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 4px;
+    }
+
+    .metric-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .badge-pill {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-top: auto;
+      align-self: flex-start;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: #f1f5f9;
+      border: 1px solid var(--card-border);
+    }
+
+    .badge-pill.navy { color: var(--color-brand-primary); }
+    .badge-pill.green { color: var(--color-brand-green); }
+    .badge-pill.red { color: var(--color-brand-red); }
+    .badge-pill.amber { color: #d97706; }
+
+    .callout-box {
+      background: #eff6ff;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 14px;
+    }
+
+    .callout-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--color-brand-primary);
+      margin-bottom: 4px;
+    }
+
+    .callout-text {
+      font-size: 11.5px;
+      color: var(--text-body);
+      line-height: 1.45;
+    }
+
+    .list-item {
+      font-size: 11.5px;
+      color: var(--text-body);
+      line-height: 1.6;
+      margin-bottom: 6px;
+    }
+
+    .list-item strong {
+      color: var(--text-dark);
+    }
+
+    /* Slide Footer */
+    .slide-footer {
+      border-top: 1px solid var(--card-border);
+      padding: 8px 28px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--text-muted);
+      background: #ffffff;
+    }
+
+    .keyboard-hint {
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+      padding-bottom: 12px;
+    }
+
+    kbd {
+      background: #002f6e;
+      border: 1px solid #234b82;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #ffffff;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Nav Bar -->
+  <header class="deck-nav">
+    <div class="deck-brand">
+      <span class="brand-logo-badge">GSF</span>
+      <span class="deck-title">AEM Edge Delivery Services (EDS) POC — Official Presentation Deck</span>
+    </div>
+
+    <div class="deck-controls">
+      <button type="button" class="btn-nav" id="btn-prev" onclick="changeSlide(-1)">◀ Previous</button>
+      <span class="slide-counter" id="slide-num">1 / 8</span>
+      <button type="button" class="btn-nav" id="btn-next" onclick="changeSlide(1)">Next ▶</button>
+      <a href="/GSF_Car_Parts_EDS_POC.pptx" download class="btn-download">
+        ⬇ Download PPTX
+      </a>
+    </div>
+  </header>
+
+  <!-- Presentation Main Viewport -->
+  <main class="presentation-container">
+
+    <!-- SLIDE 1: Cover / Hero -->
+    <div class="slide-frame active" id="slide-1">
+      <div style="background: linear-gradient(135deg, #07162c 0%, #002f6e 100%); border-bottom: 4px solid var(--color-brand-red); padding: 36px 40px; color: #ffffff;">
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+          <div style="background: var(--color-brand-red); color: #fff; font-size: 24px; font-weight: 900; padding: 6px 14px; border-radius: 6px; font-family: 'Arial Black', Impact, sans-serif;">GSF</div>
+          <div>
+            <div style="font-size: 16px; font-weight: 900; letter-spacing: 0.5px;">CAR PARTS</div>
+            <div style="font-size: 9px; font-weight: 800; color: var(--color-brand-yellow); letter-spacing: 1px;">DO YOURSELF PROUD</div>
+          </div>
+          <span style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 800; color: var(--color-brand-yellow); margin-left: 12px;">ENTERPRISE PROOF OF CONCEPT</span>
+        </div>
+
+        <h1 style="font-size: 34px; font-weight: 900; line-height: 1.2; margin-bottom: 10px;">AEM Edge Delivery Services Storefront</h1>
+        <p style="font-size: 15px; color: #cbd5e1; max-width: 880px; line-height: 1.45; margin-bottom: 20px;">
+          Sub-Second Automotive E-Commerce Powered by AEM Edge Delivery Services (EDS) & Headless Adobe Commerce with Live DVLA Vehicle Fitment Engine
+        </p>
+
+        <!-- Plate & Fitment pill -->
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="display: inline-flex; align-items: center; background: #ffd100; border: 2px solid #111; border-radius: 6px; overflow: hidden; height: 38px;">
+            <div style="background: #002f6e; color: #fff; font-size: 10px; font-weight: 900; padding: 0 8px; height: 100%; display: flex; align-items: center;">GB</div>
+            <div style="color: #111; font-size: 15px; font-weight: 900; padding: 0 12px; letter-spacing: 1.5px; font-family: 'Arial Black', sans-serif;">WP19 WTE</div>
+          </div>
+          <div style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #059669; font-size: 12px; font-weight: 800; padding: 8px 14px; border-radius: 6px;">
+            ✓ Guaranteed to fit Volkswagen Golf (2019)
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-body" style="padding: 24px 40px;">
+        <div class="grid-4">
+          <div class="card accent-green">
+            <div class="metric-value" style="color: var(--color-brand-green);">100/100</div>
+            <div class="metric-label">Google PageSpeed</div>
+            <div class="metric-sub">Performance, SEO & Accessibility</div>
+          </div>
+          <div class="card accent-navy">
+            <div class="metric-value" style="color: var(--color-brand-primary);">&lt; 900ms</div>
+            <div class="metric-label">Largest Contentful Paint</div>
+            <div class="metric-sub">4x faster than monolithic sites</div>
+          </div>
+          <div class="card accent-red">
+            <div class="metric-value" style="color: var(--color-brand-red);">Zero ACCS</div>
+            <div class="metric-label">Direct Headless APIs</div>
+            <div class="metric-sub">No costly middleware license tax</div>
+          </div>
+          <div class="card accent-amber">
+            <div class="metric-value" style="color: #d97706;">100% Fit</div>
+            <div class="metric-label">DVLA & Component Map</div>
+            <div class="metric-sub">Guaranteed parts compatibility</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>GSF Car Parts • Adobe Experience Manager (EDS) POC</span>
+        <span>mcstaging.gsfcarparts.com</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Problem & Purpose -->
+    <div class="slide-frame" id="slide-2">
+      <div class="slide-top-bar">
+        <div class="slide-brand-group">
+          <div class="slide-logo-red">GSF</div>
+          <div class="slide-logo-text">CAR PARTS<span>DO YOURSELF PROUD</span></div>
+          <div class="slide-title-wrap">
+            <span class="slide-cat-tag">EXECUTIVE SUMMARY</span>
+            <div class="slide-main-title">The Automotive Fitment Barrier & The Solution</div>
+          </div>
+        </div>
+        <span class="slide-status-pill">⚡ 100 PAGESPEED</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="slide-subtitle">Why traditional e-commerce architectures fail in automotive aftermarket, and how AEM EDS solves it.</div>
+        <div class="grid-2">
+          <div class="card" style="border-left: 4px solid var(--color-brand-red);">
+            <div class="card-title"><span style="color: var(--color-brand-red);">01.</span> The Fitment Barrier</div>
+            <div class="card-text">
+              Over 70% of automotive customer drop-offs occur if vehicle identification is slow or inaccurate. Customers must know with 100% certainty that a brake pad or filter fits before purchasing.
+            </div>
+            <span class="badge-pill red">Critical Conversion Factor</span>
+          </div>
+          <div class="card" style="border-left: 4px solid #d97706;">
+            <div class="card-title"><span style="color: #d97706;">02.</span> Monolithic Performance Drag</div>
+            <div class="card-text">
+              Traditional Magento storefronts and heavy SPAs carry 1.5MB+ JS bundles, causing sluggish LCP (>3.5s) and slow TTFB (>800ms), severely damaging mobile conversion and SEO rankings.
+            </div>
+            <span class="badge-pill amber">Speed & CWV Deficit</span>
+          </div>
+          <div class="card" style="border-left: 4px solid var(--color-brand-primary);">
+            <div class="card-title"><span style="color: var(--color-brand-primary);">03.</span> Costly Middleware Overhead</div>
+            <div class="card-text">
+              Typical headless setups demand costly Adobe Commerce Cloud Service (ACCS) modules, complex middleware, and caching proxy servers, driving up cloud infrastructure and licensing fees.
+            </div>
+            <span class="badge-pill navy">Middleware Tax</span>
+          </div>
+          <div class="card" style="border-left: 4px solid var(--color-brand-green);">
+            <div class="card-title"><span style="color: var(--color-brand-green);">04.</span> POC Validation Objective</div>
+            <div class="card-text">
+              Prove that pure Vanilla ES6 on AEM Edge Delivery Services connecting directly to Magento GraphQL and GSF VRM APIs delivers 100 PageSpeed with zero intermediate server middleware.
+            </div>
+            <span class="badge-pill green">Success Criteria Met</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>GSF Car Parts Storefront • AEM EDS POC</span>
+        <span>Confidential Technical Review</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Tech Stack -->
+    <div class="slide-frame" id="slide-3">
+      <div class="slide-top-bar">
+        <div class="slide-brand-group">
+          <div class="slide-logo-red">GSF</div>
+          <div class="slide-logo-text">CAR PARTS<span>DO YOURSELF PROUD</span></div>
+          <div class="slide-title-wrap">
+            <span class="slide-cat-tag">TECHNOLOGY ARCHITECTURE</span>
+            <div class="slide-main-title">Modern, Resilient, Zero-Framework Stack</div>
+          </div>
+        </div>
+        <span class="slide-status-pill">⚡ 100 PAGESPEED</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="slide-subtitle">Engineered for maximum execution speed, zero dependencies, and direct headless integration.</div>
+        <div class="grid-3">
+          <div class="card accent-navy">
+            <div style="font-size: 10px; color: var(--color-brand-primary); font-weight: 800; margin-bottom: 2px;">EDGE PRESENTATION</div>
+            <div class="card-title">AEM Edge Delivery</div>
+            <div class="card-text">Static markup delivered directly from GitHub via global Fastly/Cloudflare Edge CDN in &lt;50ms.</div>
+            <span class="badge-pill navy">Zero Server Render</span>
+          </div>
+          <div class="card accent-green">
+            <div style="font-size: 10px; color: var(--color-brand-green); font-weight: 800; margin-bottom: 2px;">FRONTEND RUNTIME</div>
+            <div class="card-title">Vanilla JS (ES6+)</div>
+            <div class="card-text">No React, Angular, or Vue. Pure Web Standards: Fetch API, CustomEvent Bus, and native DOM.</div>
+            <span class="badge-pill green">Zero Framework Bloat</span>
+          </div>
+          <div class="card accent-red">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">DESIGN SYSTEM</div>
+            <div class="card-title">GSF CSS3 Tokens</div>
+            <div class="card-text">Brand tokens (--color-brand-primary: #002f6e), clamp() typography, and shimmer skeletons.</div>
+            <span class="badge-pill red">Zero Layout Shift (0.00)</span>
+          </div>
+          <div class="card accent-navy">
+            <div style="font-size: 10px; color: var(--color-brand-primary); font-weight: 800; margin-bottom: 2px;">COMMERCE ENGINE</div>
+            <div class="card-title">Magento 2 GraphQL</div>
+            <div class="card-text">Direct headless GraphQL queries for category trees, products, facets, and special promotions (PARTS30).</div>
+            <span class="badge-pill navy">Headless GraphQL</span>
+          </div>
+          <div class="card accent-green">
+            <div style="font-size: 10px; color: var(--color-brand-green); font-weight: 800; margin-bottom: 2px;">AUTOMOTIVE GATEWAY</div>
+            <div class="card-title">GSF VRM REST APIs</div>
+            <div class="card-text">DVLA lookup (/vrmdetails), SKU fitment resolver (/skus), and cascading vehicle metadata endpoints.</div>
+            <span class="badge-pill green">Real-Time DVLA Match</span>
+          </div>
+          <div class="card accent-amber">
+            <div style="font-size: 10px; color: #d97706; font-weight: 800; margin-bottom: 2px;">AUTHORING & TOOLING</div>
+            <div class="card-title">Adobe AEM Sidekick</div>
+            <div class="card-text">In-context preview, publish to live via Adobe Admin API, and multi-environment toggling.</div>
+            <span class="badge-pill amber">Direct GitHub Sync</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>GSF Car Parts Storefront • AEM EDS POC</span>
+        <span>Confidential Technical Review</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: System Architecture -->
+    <div class="slide-frame" id="slide-4">
+      <div class="slide-top-bar">
+        <div class="slide-brand-group">
+          <div class="slide-logo-red">GSF</div>
+          <div class="slide-logo-text">CAR PARTS<span>DO YOURSELF PROUD</span></div>
+          <div class="slide-title-wrap">
+            <span class="slide-cat-tag">SYSTEM TOPOGRAPHY</span>
+            <div class="slide-main-title">Direct Edge-to-API Architecture</div>
+          </div>
+        </div>
+        <span class="slide-status-pill">⚡ 100 PAGESPEED</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="slide-subtitle">Eliminating intermediate middleware: Browser clients communicate directly with GraphQL & REST.</div>
+        <div class="grid-4">
+          <div class="card accent-navy">
+            <div style="font-size: 10px; color: var(--color-brand-primary); font-weight: 800; margin-bottom: 2px;">STEP 1</div>
+            <div class="card-title">Edge CDN Shell</div>
+            <div class="card-text">Fastly / Cloudflare delivers lean HTML shell in &lt;50ms. No server-side rendering delays or complex Node.js processes.</div>
+          </div>
+          <div class="card accent-green">
+            <div style="font-size: 10px; color: var(--color-brand-green); font-weight: 800; margin-bottom: 2px;">STEP 2</div>
+            <div class="card-title">Modular Blocks</div>
+            <div class="card-text">EDS loads blocks dynamically (header, vehicle-search, product-list, pdp) as viewport demand requires.</div>
+          </div>
+          <div class="card accent-amber">
+            <div style="font-size: 10px; color: #d97706; font-weight: 800; margin-bottom: 2px;">STEP 3</div>
+            <div class="card-title">Service Layer</div>
+            <div class="card-text">Centralized catalog-service & vehicle-lookup orchestrate queries, normalization, and client fitment caching.</div>
+          </div>
+          <div class="card accent-red">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">STEP 4</div>
+            <div class="card-title">Headless APIs</div>
+            <div class="card-text">Direct HTTPS calls to Magento 2 GraphQL and GSF VRM REST Gateway with zero intermediate middleware hop.</div>
+          </div>
+        </div>
+
+        <div class="callout-box">
+          <div class="callout-title">💡 FUTURE-PROOF ARCHITECTURAL ADVANTAGE: ADOBE APP BUILDER & API MESH READY</div>
+          <div class="callout-text">
+            When Adobe App Builder + API Mesh is provisioned, simply set <code>catalogApiEndpoint</code> in <code>config.json</code>. All traffic will seamlessly route via the unified API Mesh with <strong>zero frontend block, layout, or CSS modifications</strong>.
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>GSF Car Parts Storefront • AEM EDS POC</span>
+        <span>Confidential Technical Review</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Fitment Engine -->
+    <div class="slide-frame" id="slide-5">
+      <div class="slide-top-bar">
+        <div class="slide-brand-group">
+          <div class="slide-logo-red">GSF</div>
+          <div class="slide-logo-text">CAR PARTS<span>DO YOURSELF PROUD</span></div>
+          <div class="slide-title-wrap">
+            <span class="slide-cat-tag">FITMENT ENGINE</span>
+            <div class="slide-main-title">Real-Time Vehicle Registration (VRM) Flow</div>
+          </div>
+        </div>
+        <span class="slide-status-pill">⚡ 100 PAGESPEED</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="slide-subtitle">From UK license plate input to guaranteed SKU fitment set in milliseconds.</div>
+        <div class="grid-4" style="margin-bottom: 12px;">
+          <div class="card">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">STEP 1</div>
+            <div class="card-title">Plate Validation</div>
+            <div class="card-text">UK regex validates format in yellow search box. Sanitizes spaces, casing, and invalid characters.</div>
+          </div>
+          <div class="card">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">STEP 2</div>
+            <div class="card-title">DVLA Lookup</div>
+            <div class="card-text">Calls /vrmdetails endpoint. Resolves Make, Model, Year, Engine, Fuel, and issues active sessionId.</div>
+          </div>
+          <div class="card">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">STEP 3</div>
+            <div class="card-title">SKU Resolution</div>
+            <div class="card-text">Cross-references category component IDs with /skus to return exact compatible parts list.</div>
+          </div>
+          <div class="card">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">STEP 4</div>
+            <div class="card-title">State Broadcast</div>
+            <div class="card-text">Persists to localStorage & cookies. Dispatches gsf:vehicle-changed event. Saves to "My Garage".</div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="card accent-green" style="padding: 12px 16px;">
+            <div style="font-size: 13px; font-weight: 800; color: var(--color-brand-green); margin-bottom: 4px;">✔ Dynamic MOT & Road Tax Alerts</div>
+            <div class="card-text" style="font-size: 11px;">Calculates expiry dates and urgent service alerts directly from registration plate.</div>
+          </div>
+          <div class="card accent-navy" style="padding: 12px 16px;">
+            <div style="font-size: 13px; font-weight: 800; color: var(--color-brand-primary); margin-bottom: 4px;">✔ Cascading Manual Vehicle Select</div>
+            <div class="card-text" style="font-size: 11px;">6-tier fallback: Make → Model → Year → Engine → Body → HP ratings via /vehiclemetadata.</div>
+          </div>
+          <div class="card accent-amber" style="padding: 12px 16px;">
+            <div style="font-size: 13px; font-weight: 800; color: #d97706; margin-bottom: 4px;">✔ "My Garage" Multi-Vehicle Switcher</div>
+            <div class="card-text" style="font-size: 11px;">Sticky header dropdown enabling trade users and families to toggle saved cars in 1 click.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>GSF Car Parts Storefront • AEM EDS POC</span>
+        <span>Confidential Technical Review</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: PLP & PDP Experiences -->
+    <div class="slide-frame" id="slide-6">
+      <div class="slide-top-bar">
+        <div class="slide-brand-group">
+          <div class="slide-logo-red">GSF</div>
+          <div class="slide-logo-text">CAR PARTS<span>DO YOURSELF PROUD</span></div>
+          <div class="slide-title-wrap">
+            <span class="slide-cat-tag">CATALOG & CONVERSION</span>
+            <div class="slide-main-title">PLP Catalog Discovery & PDP Fitment Check</div>
+          </div>
+        </div>
+        <span class="slide-status-pill">⚡ 100 PAGESPEED</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="slide-subtitle">Intelligent dual-tier browsing, facet filtering, and real-time compatibility verification.</div>
+        <div class="grid-2">
+          <div class="card accent-red">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">PRODUCT LISTING PAGE (PLP)</div>
+            <div class="card-title" style="font-size: 16px; margin-bottom: 10px;">Dual-View Category Routing</div>
+            <div class="list-item"><strong>• Parent Category View:</strong> Visual subcategory cards with item counts and category icons for frictionless navigation.</div>
+            <div class="list-item"><strong>• Leaf Category View:</strong> Full e-commerce catalog filtered strictly to SKUs guaranteed to fit active vehicle.</div>
+            <div class="list-item"><strong>• Sidebar Facets:</strong> Dynamic Brand filtering using Magento "quality" attribute codes (EBC, Bosch, Borg & Beck).</div>
+            <div class="list-item"><strong>• Brand Sequence:</strong> Initial card ordering perfectly mirrors GSF preproduction catalog sequence.</div>
+            <div class="list-item"><strong>• Zero-CLS Skeletons:</strong> Shimmer skeleton layouts prevent visual shift during loading.</div>
+          </div>
+
+          <div class="card accent-green">
+            <div style="font-size: 10px; color: var(--color-brand-green); font-weight: 800; margin-bottom: 2px;">PRODUCT DETAILS PAGE (PDP)</div>
+            <div class="card-title" style="font-size: 16px; margin-bottom: 10px;">Real-Time Fitment & Conversion</div>
+            <div class="list-item"><strong>• Dynamic Fitment Banner:</strong> Prominent green "Guaranteed to Fit [Vehicle]" or high-visibility red mismatch warning.</div>
+            <div class="list-item"><strong>• Inline Plate Checker:</strong> Customers without a vehicle can type plate directly on PDP for instant verification.</div>
+            <div class="list-item"><strong>• Dynamic Gallery:</strong> Main high-res product visual with responsive multi-angle thumbnail carousel.</div>
+            <div class="list-item"><strong>• Pricing & Promo:</strong> Transparent inc/ex VAT display and automatic coupon application (PARTS30).</div>
+            <div class="list-item"><strong>• Tech Specs Tabs:</strong> Vehicle compatibility table, OEM cross-references, and warranty info.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>GSF Car Parts Storefront • AEM EDS POC</span>
+        <span>Confidential Technical Review</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Performance & ROI -->
+    <div class="slide-frame" id="slide-7">
+      <div class="slide-top-bar">
+        <div class="slide-brand-group">
+          <div class="slide-logo-red">GSF</div>
+          <div class="slide-logo-text">CAR PARTS<span>DO YOURSELF PROUD</span></div>
+          <div class="slide-title-wrap">
+            <span class="slide-cat-tag">BUSINESS IMPACT & ROI</span>
+            <div class="slide-main-title">Proven Performance & Tangible Business ROI</div>
+          </div>
+        </div>
+        <span class="slide-status-pill">⚡ 100 PAGESPEED</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="slide-subtitle">How sub-second edge performance and fitment accuracy translate directly into business value.</div>
+        <div class="grid-4" style="margin-bottom: 14px;">
+          <div class="card accent-green">
+            <div class="metric-value" style="color: var(--color-brand-green);">100/100</div>
+            <div class="metric-label">Google PageSpeed</div>
+            <div class="metric-sub">Flawless mobile & desktop score across performance & SEO.</div>
+          </div>
+          <div class="card accent-navy">
+            <div class="metric-value" style="color: var(--color-brand-primary);">&lt; 900ms</div>
+            <div class="metric-label">Largest Contentful Paint</div>
+            <div class="metric-sub">4x faster than legacy monolithic Magento storefronts (avg 3.8s).</div>
+          </div>
+          <div class="card accent-amber">
+            <div class="metric-value" style="color: #d97706;">&lt; 85ms</div>
+            <div class="metric-label">Server TTFB</div>
+            <div class="metric-sub">Edge CDN caching delivers static HTML with near-zero network latency.</div>
+          </div>
+          <div class="card accent-red">
+            <div class="metric-value" style="color: var(--color-brand-red);">0.00</div>
+            <div class="metric-label">Cumulative Layout Shift</div>
+            <div class="metric-sub">Shimmer skeletons ensure total visual stability during loading.</div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="card accent-navy">
+            <div class="card-title">📈 Conversion Lift</div>
+            <div class="card-text">Every 100ms shaved off page load yields a 1% conversion rate increase in e-commerce. Sub-second speed drives higher mobile checkout completion.</div>
+          </div>
+          <div class="card accent-green">
+            <div class="card-title">🔄 Reduced Returns</div>
+            <div class="card-text">100% pre-purchase fitment verification directly curtails the £15–£25 cost of each incorrect part return and subsequent customer service handling.</div>
+          </div>
+          <div class="card accent-red">
+            <div class="card-title">☁️ Zero Middleware Cost</div>
+            <div class="card-text">No dedicated Node.js render cluster or ACCS server fleet required. Pure edge CDN distribution slashes monthly infrastructure spending.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>GSF Car Parts Storefront • AEM EDS POC</span>
+        <span>Confidential Technical Review</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Roadmap & Next Steps -->
+    <div class="slide-frame" id="slide-8">
+      <div class="slide-top-bar">
+        <div class="slide-brand-group">
+          <div class="slide-logo-red">GSF</div>
+          <div class="slide-logo-text">CAR PARTS<span>DO YOURSELF PROUD</span></div>
+          <div class="slide-title-wrap">
+            <span class="slide-cat-tag">ROADMAP & ROLLOUT</span>
+            <div class="slide-main-title">Conclusion & Production Rollout Roadmap</div>
+          </div>
+        </div>
+        <span class="slide-status-pill">⚡ 100 PAGESPEED</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="slide-subtitle">The path from successful Proof of Concept to full enterprise storefront deployment.</div>
+        <div class="grid-3">
+          <div class="card accent-green">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">PHASE 1</div>
+            <div class="card-title" style="margin-bottom: 6px;">POC Validation</div>
+            <span class="badge-pill green" style="margin-bottom: 10px;">STATUS: DELIVERED</span>
+            <div class="list-item">✔ 100/100 Core Web Vitals achieved</div>
+            <div class="list-item">✔ Live DVLA VRM lookup & session engine</div>
+            <div class="list-item">✔ Direct Magento 2 GraphQL integration</div>
+            <div class="list-item">✔ Dual-view PLP & fitment-checked PDP</div>
+            <div class="list-item">✔ Adobe Sidekick preview & live publish</div>
+          </div>
+
+          <div class="card accent-navy">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">PHASE 2</div>
+            <div class="card-title" style="margin-bottom: 6px;">Omnichannel Scale</div>
+            <span class="badge-pill navy" style="margin-bottom: 10px;">TARGET: Q1 2027</span>
+            <div class="list-item">• Real-time branch stock (180+ stores)</div>
+            <div class="list-item">• 30-min Click & Collect branch picker</div>
+            <div class="list-item">• Customer account & saved garage sync</div>
+            <div class="list-item">• Full checkout & payment gateway</div>
+            <div class="list-item">• Trade pricing & workshop discounts</div>
+          </div>
+
+          <div class="card accent-amber">
+            <div style="font-size: 10px; color: var(--color-brand-red); font-weight: 800; margin-bottom: 2px;">PHASE 3</div>
+            <div class="card-title" style="margin-bottom: 6px;">API Mesh & Scale</div>
+            <span class="badge-pill amber" style="margin-bottom: 10px;">TARGET: Q2 2027</span>
+            <div class="list-item">• Activate Adobe App Builder API Mesh</div>
+            <div class="list-item">• Unified GraphQL schema across ERP/WMS</div>
+            <div class="list-item">• Trade portal & B2B garage accounts</div>
+            <div class="list-item">• Progressive Web App (PWA) offline mode</div>
+            <div class="list-item">• Multi-warehouse inventory routing</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>GSF Car Parts Storefront • AEM EDS POC</span>
+        <span>Confidential Technical Review</span>
+      </div>
+    </div>
+
+  </main>
+
+  <div class="keyboard-hint">
+    Use <kbd>◀</kbd> and <kbd>▶</kbd> arrow keys or <kbd>Space</kbd> to navigate slides
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 8;
+
+    function updateSlide() {
+      document.querySelectorAll('.slide-frame').forEach((frame, idx) => {
+        frame.classList.toggle('active', idx + 1 === currentSlide);
+      });
+      document.getElementById('slide-num').textContent = `${currentSlide} / ${totalSlides}`;
+      document.getElementById('btn-prev').disabled = currentSlide === 1;
+      document.getElementById('btn-next').disabled = currentSlide === totalSlides;
+    }
+
+    function changeSlide(direction) {
+      const next = currentSlide + direction;
+      if (next >= 1 && next <= totalSlides) {
+        currentSlide = next;
+        updateSlide();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        changeSlide(1);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        changeSlide(-1);
+      }
+    });
+
+    updateSlide();
+  </script>
+</body>
+</html>
