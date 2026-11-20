@@ -105,7 +105,6 @@ export function decorateMain(main) {
  */
 async function loadEager(doc) {
   document.documentElement.lang = 'en';
-  await loadConfig();
   const main = doc.querySelector('main');
   if (main) {
     decorateMain(main);
@@ -122,6 +121,9 @@ async function loadEager(doc) {
  * @param {Element} doc The container element
  */
 async function loadLazy(doc) {
+  // Non-blocking background sync of configuration overrides
+  loadConfig().catch(() => {});
+
   const header = doc.querySelector('header');
   if (header) loadHeader(header);
 
@@ -135,9 +137,18 @@ async function loadLazy(doc) {
   initPageTransitions();
 }
 
+/**
+ * Loads everything that happens a lot later,
+ * without impacting the user experience.
+ */
+function loadDelayed() {
+  window.setTimeout(() => import('./delayed.js'), 3000);
+}
+
 async function loadPage() {
   await loadEager(document);
   await loadLazy(document);
+  loadDelayed();
 }
 
 loadPage();

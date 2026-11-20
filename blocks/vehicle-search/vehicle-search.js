@@ -1,6 +1,5 @@
 import {
   getStoredVehicle,
-  clearVehicleState,
   getVehicleMotAndHealth,
   normalizeVrm,
   lookupVrmAndFetchSkus,
@@ -1012,14 +1011,14 @@ export default async function decorate(block) {
       } else {
         errorMsg.textContent = `Could not find vehicle details for ${vrm}.`;
       }
-    } catch (err) {
+    } catch {
       findBtn.disabled = false;
       errorMsg.textContent = `Error looking up registration ${vrm}. Please try again.`;
     }
   });
 
   // Listen for vehicle updates (switch to pill)
-  window.addEventListener('vehicle-lookup:updated', (event) => {
+  window.addEventListener('vehicle-lookup:updated', (_event) => {
     stored = getStoredVehicle();
     cardBox.hidden = true;
     pillBox.hidden = false;
@@ -1045,5 +1044,18 @@ export default async function decorate(block) {
       vrmInput.focus();
     }
     errorMsg.textContent = '';
+  });
+
+  // Listen for focus request from decoupled blocks (e.g. product-list view tabs)
+  window.addEventListener('vehicle-search:request-focus', () => {
+    if (!pillBox.hidden) {
+      pillBox.hidden = true;
+      cardBox.hidden = false;
+    }
+    const vrmInput = cardBox.querySelector('#compact-vrm-input') || block.querySelector('input');
+    if (vrmInput) {
+      vrmInput.focus();
+      vrmInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   });
 }

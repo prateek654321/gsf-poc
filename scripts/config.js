@@ -102,11 +102,12 @@ export function getConfig() {
 }
 
 /**
- * Asynchronously loads /config.json if available to allow spreadsheet / remote config overrides
+ * Asynchronously loads /config.json if available to allow spreadsheet / remote config overrides.
+ * Uses default browser caching and fails silently back to metadata and DEFAULT_CONFIG.
  */
 export async function loadConfig() {
   try {
-    const res = await fetch('/config.json?v=mcstaging', { cache: 'no-cache' });
+    const res = await fetch('/config.json');
     if (res.ok) {
       const json = await res.json();
       window.CONFIG = { ...window.CONFIG, ...json };

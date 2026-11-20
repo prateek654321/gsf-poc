@@ -333,7 +333,17 @@ export default async function decorate(block) {
 
   block.append(pocBar, promoStrip, brandBar, navBar);
 
-  // Fetch Categories from Magento API
+  // Initial instant default navigation (prevents layout shift / blank navbar while hydrating)
+  navList.innerHTML = `
+    <li class="header-nav-item"><a href="/plp.html?category_id=5278&category_name=Service%20Parts" class="header-nav-link">Service Parts</a></li>
+    <li class="header-nav-item"><a href="/plp.html?category_id=5461&category_name=Braking" class="header-nav-link">Braking</a></li>
+    <li class="header-nav-item"><a href="/plp.html?category_id=5590&category_name=Steering%20%26%20Suspension" class="header-nav-link">Steering & Suspension</a></li>
+    <li class="header-nav-item"><a href="/plp.html?category_id=5707&category_name=Engine%20Parts" class="header-nav-link">Engine Parts</a></li>
+    <li class="header-nav-item deals-item"><a href="/plp.html?category_id=5461&category_name=Braking" class="header-nav-link deals-link">🔥 Deals & Offers</a></li>
+    <li class="header-nav-item all-categories-item"><a href="/categories.html" class="header-nav-link all-categories-link">☰ All Categories</a></li>
+  `;
+
+  // Fetch Categories from Magento API or fast sessionStorage cache
   try {
     const rawCategories = await fetchCategories();
 

@@ -51,10 +51,32 @@ export async function executeGraphQL(query, variables = {}) {
   return json.data;
 }
 
+// Client-side cache for category tree to prevent redundant GraphQL roundtrips
+let categoriesCache = null;
+
 /**
- * Fetch top-level and second-level categories for the navigation menu
+ * Fetch top-level and second-level categories for the navigation menu.
+ * Caches in memory and sessionStorage to provide instant 0ms retrieval on subsequent page visits.
  */
 export async function fetchCategories() {
+  if (categoriesCache && categoriesCache.length > 0) {
+    return categoriesCache;
+  }
+
+  // 1. Check client-side sessionStorage
+  try {
+    const raw = window.sessionStorage?.getItem('gsf_categories_cache');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        categoriesCache = parsed;
+        return categoriesCache;
+      }
+    }
+  } catch {
+    // Ignore sessionStorage errors
+  }
+
   const query = `
     query GetCategoryTree {
       categoryList {
@@ -79,9 +101,24 @@ export async function fetchCategories() {
     }
   `;
 
-  const data = await executeGraphQL(query);
-  const root = data?.categoryList?.[0];
-  return root?.children || [];
+  try {
+    const data = await executeGraphQL(query);
+    const root = data?.categoryList?.[0];
+    const categories = root?.children || [];
+    if (categories.length > 0) {
+      categoriesCache = categories;
+      try {
+        window.sessionStorage?.setItem('gsf_categories_cache', JSON.stringify(categories));
+      } catch {
+        // Ignore storage quota
+      }
+    }
+    return categories;
+  } catch (err) {
+    console.warn('Magento fetchCategories failed, checking cache:', err.message);
+    if (categoriesCache) return categoriesCache;
+    throw err;
+  }
 }
 
 /**

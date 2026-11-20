@@ -1,6 +1,6 @@
 import { fetchProducts, fetchProductsWithBrandSort, fetchVrmDetails } from './magento-api.js';
-import { getStoredVehicle, fetchCategoryFitmentSkus } from './vehicle-lookup.js';
-import { resolveCategoryComponentIds, getCategoryTargets } from './category-component-map.js';
+import { getStoredVehicle } from './vehicle-lookup.js';
+import { getCategoryTargets } from './category-component-map.js';
 import { getConfig } from './config.js';
 
 /**
@@ -490,11 +490,6 @@ export async function fetchCatalogProducts({
     const cleanModel = getCleanVehicleModel(rawModel);
     const vehicleMake = stored.vehicle?.make || '';
     const vehicleYear = stored.vehicle?.year || '';
-
-    // Search query for Magento: combines clean model name with any user-typed search keywords
-    const effectiveSearch = searchPhrase
-      ? `${cleanModel || vehicleMake} ${searchPhrase}`.trim()
-      : (cleanModel || vehicleMake);
 
     // Normalize brand filter to quality attribute code if provided
     const normalizedFilters = { ...filters };

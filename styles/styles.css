@@ -72,7 +72,7 @@
 html,
 body {
   overflow-x: hidden;
-  max-width: 100vw;
+  max-width: 100%;
 }
 
 body {
@@ -143,25 +143,31 @@ img {
   display: block;
 }
 
-/* Container */
-.container,
+/* Standard Adobe EDS Page Grid */
 main > div.section {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.container,
+main > div.section > div {
   width: 100%;
   max-width: var(--container-max-width);
   margin: 0 auto;
   padding: 0 1rem;
+  box-sizing: border-box;
 }
 
 @media (min-width: 900px) {
   .container,
-  main > div.section {
+  main > div.section > div {
     padding: 0 2rem;
   }
 }
 
 /* Full Width Section Modifier */
-main > div.section.full-width,
-main > div.section.trust-bar-container {
+main > div.section.full-width > div,
+main > div.section.trust-bar-container > div {
   max-width: 100%;
   padding-left: 0;
   padding-right: 0;

@@ -734,7 +734,6 @@ export async function initVehicleLookup(container, { inputId = 'vehicle-search-v
   const input = container.querySelector(`#${inputId}`);
   const message = container.querySelector(`.${classPrefix}-message`);
   const button = container.querySelector('button');
-  const btnText = button.querySelector('.btn-text');
   const btnSpinner = button.querySelector('.btn-spinner');
 
   // Input auto-formatting for UK plate

@@ -1,7 +1,6 @@
 import { fetchProductBySku } from '../../scripts/magento-api.js';
 import { getConfig } from '../../scripts/config.js';
 import {
-  getStoredVehicle,
   checkCurrentVehicleFitment,
   lookupVrmAndFetchSkus,
 } from '../../scripts/vehicle-lookup.js';

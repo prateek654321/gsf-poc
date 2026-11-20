@@ -2,10 +2,12 @@
   "name": "gsf-eds-store",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "description": "GSF Car Parts Edge Delivery Services POC",
   "scripts": {
     "start": "aem up --no-open --forward-browser-logs",
-    "lint": "eslint ."
+    "test": "node --test test/*.test.js",
+    "lint": "npx eslint ."
   },
   "devDependencies": {
     "@adobe/aem-cli": "^16.5.8",
