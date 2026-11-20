@@ -8,6 +8,7 @@
     "lint": "eslint ."
   },
   "devDependencies": {
-    "@adobe/aem-cli": "^16.5.8"
+    "@adobe/aem-cli": "^16.5.8",
+    "pptxgenjs": "^4.0.1"
   }
 }
