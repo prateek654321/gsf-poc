@@ -262,17 +262,12 @@ export default async function decorate(block) {
           <span class="parent-cat-name">${cat.name}</span>
           <span class="parent-cat-subcount">${childCount > 0 ? `${childCount} Subcategories` : 'Catalog Products'}</span>
         </div>
-        <div class="parent-cat-actions">
-          <span class="btn-pill-explore">Explore ▾</span>
-          <a href="${catUrl}" class="btn-pill-shop" title="Shop all in ${cat.name}">Shop ➔</a>
-        </div>
       `;
 
-      // Clicking explore switches drilldown
-      card.addEventListener('click', (e) => {
-        const shopBtn = e.target.closest('.btn-pill-shop');
-        if (shopBtn) {
-          // Direct navigation
+      // Clicking anywhere on the card selects this department
+      card.addEventListener('click', () => {
+        if (childCount === 0) {
+          window.location.href = catUrl;
           return;
         }
 
@@ -283,6 +278,11 @@ export default async function decorate(block) {
         card.classList.add('active');
         card.setAttribute('aria-pressed', 'true');
         renderSubcategories(cat);
+
+        const subSection = block.querySelector('.subcategories-section');
+        if (subSection && window.innerWidth < 768) {
+          subSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
       });
 
       // Keyboard access

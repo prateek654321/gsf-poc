@@ -154,11 +154,12 @@
 .parent-cat-card {
   background-color: var(--color-white, #ffffff);
   border: 2px solid var(--color-gray-200, #e2e8f0);
-  border-radius: 10px;
-  padding: 1.25rem 0.875rem 1rem;
+  border-radius: 12px;
+  padding: 1.5rem 1rem 1.35rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -170,90 +171,54 @@
 .parent-cat-card:hover {
   transform: translateY(-3px);
   border-color: var(--color-brand-primary, #002f6e);
-  box-shadow: 0 8px 16px -2px rgba(0, 47, 110, 0.12);
+  box-shadow: 0 8px 18px -2px rgba(0, 47, 110, 0.14);
 }
 
 .parent-cat-card.active {
   border-color: var(--color-brand-primary, #002f6e);
   background-color: #f0f6fc;
-  box-shadow: 0 0 0 2px var(--color-brand-primary, #002f6e);
+  box-shadow: 0 0 0 2.5px var(--color-brand-primary, #002f6e);
 }
 
 .parent-cat-icon {
-  font-size: 2.25rem;
-  margin-bottom: 0.5rem;
+  font-size: 2.5rem;
+  margin-bottom: 0.625rem;
   line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.parent-cat-card:hover .parent-cat-icon {
+  transform: scale(1.1);
 }
 
 .parent-cat-meta {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  margin-bottom: 0.75rem;
+  align-items: center;
+  width: 100%;
 }
 
 .parent-cat-name {
   font-weight: 800;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   color: var(--color-gray-900, #0f172a);
   line-height: 1.3;
+  transition: color 0.15s ease;
+}
+
+.parent-cat-card:hover .parent-cat-name {
+  color: var(--color-brand-primary, #002f6e);
+}
+
+.parent-cat-card.active .parent-cat-name {
+  color: var(--color-brand-primary, #002f6e);
 }
 
 .parent-cat-subcount {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--color-gray-500, #64748b);
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
   font-weight: 500;
-}
-
-/* Parent Card Actions (Explore vs Direct Shop) */
-.parent-cat-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  margin-top: auto;
-}
-
-.btn-pill-explore {
-  flex: 1;
-  background: #f1f5f9;
-  color: #334155;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  padding: 0.35rem 0.5rem;
-  border-radius: 4px;
-  text-align: center;
-  transition: background 0.15s ease;
-}
-
-.parent-cat-card:hover .btn-pill-explore {
-  background: #e2e8f0;
-  color: #0f172a;
-}
-
-.parent-cat-card.active .btn-pill-explore {
-  background: var(--color-brand-primary, #002f6e);
-  color: #ffffff;
-}
-
-.btn-pill-shop {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #059669;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  padding: 0.35rem 0.625rem;
-  border-radius: 4px;
-  text-decoration: none;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.btn-pill-shop:hover {
-  background: #059669;
-  color: #ffffff;
-  border-color: #059669;
 }
 
 /* Subcategories Section */
