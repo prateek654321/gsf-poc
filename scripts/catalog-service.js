@@ -1,4 +1,4 @@
-import { fetchProducts, fetchProductsWithBrandSort, fetchVrmDetails } from './magento-api.js';
+import { fetchProducts, fetchProductsWithBrandSort, fetchVrmDetails, fetchProductBySku } from './magento-api.js';
 import { getStoredVehicle } from './vehicle-lookup.js';
 import { getCategoryTargets } from './category-component-map.js';
 import { getConfig } from './config.js';
@@ -512,75 +512,133 @@ export async function fetchCatalogProducts({
     let fitmentPool = fitmentCache.get(cacheKey);
 
     if (!fitmentPool) {
-      // 1. Resolve authentic GSF category targets (e.g. Brake Pads: 5467/816, Discs: 5470/871, Filters, Oil, Battery)
-      const targets = getCategoryTargets(categoryId, categoryName);
-
-      // 2. Ensure active session ID
-      let sessionId = stored.sessionId || stored.vehicle?.sessionId;
-      if (!sessionId && stored.vrm) {
-        try {
-          const vrmDetails = await fetchVrmDetails(stored.vrm);
-          if (vrmDetails?.sessionId) sessionId = vrmDetails.sessionId;
-        } catch {}
-      }
-      if (!sessionId) {
-        sessionId = 'vdzY2NskTPnf'; // Default verified TecDoc fitment session
-      }
-
       let rawItems = [];
       let totalCount = 0;
 
-      // 3. Execute authentic ProductFilterWithBrandSort queries for each target
-      for (const target of targets) {
+      // 1. If user provided a free-text search phrase without a specific category,
+      // search directly across Magento catalog by phrase, brand, or SKU
+      if (searchPhrase && !categoryId) {
         try {
-          const gCodes = stored.vehicle?.gCodePartialIDs;
-          let gCodeStr = '';
-          if (Array.isArray(gCodes) && gCodes.length > 0) {
-            gCodeStr = gCodes.join(',');
-          } else if (stored.vehicle?.gCodeIDs) {
-            gCodeStr = String(stored.vehicle.gCodeIDs);
-          } else if (vehicleMake.toLowerCase() === 'ford' && (cleanModel.toLowerCase().includes('fiesta') || rawModel.toLowerCase().includes('fiesta'))) {
-            gCodeStr = '174623,174625,174626,174630,174634,174638,174651,174656,174661,174665,174669,174671,174673,174678,174681';
-          }
-
-          const vFilter = {
-            session_id: sessionId,
-            year: stored.vehicle?.modelVersionTitle || stored.vehicle?.modelVersion || (vehicleMake.toLowerCase() === 'ford' ? '10/2005 - 04/2009' : String(vehicleYear || '2016')),
-            vrm: stored.vrm || '',
-            make: vehicleMake,
-            model: cleanModel || rawModel,
-            component_id: String(target.compId),
-            engine: stored.vehicle?.engineSize || stored.vehicle?.engine || (vehicleMake.toLowerCase() === 'ford' ? '1.2 litres' : ''),
-            body: stored.vehicle?.bodyStyle || '',
-            hp: stored.vehicle?.power || '',
-          };
-          if (gCodeStr) {
-            vFilter.gCodeIDs = gCodeStr;
-          }
-
-          const res = await fetchProductsWithBrandSort({
-            categoryIds: [target.catId],
-            vrmFilter: vFilter,
+          const queryRes = await fetchProducts({
+            searchPhrase: searchPhrase.trim(),
+            sort,
             page: 1,
             pageSize: 100,
             customFilters: normalizedFilters,
           });
+          rawItems = queryRes?.items || [];
+          totalCount = queryRes?.total_count || rawItems.length;
 
-          if (res?.items && res.items.length > 0) {
-            const tagged = res.items.map((it) => ({
-              ...it,
-              category_id: String(target.catId),
-              category_name: target.name,
-            }));
-            rawItems = [...rawItems, ...tagged];
-            totalCount += (res.total_count || res.items.length);
+          // If fulltext search returned 0 items, check if searchPhrase is an exact SKU or Part Number
+          if (rawItems.length === 0) {
+            const cleanSku = searchPhrase.trim().toUpperCase().replace(/\s+/g, '');
+            try {
+              const skuRes = await fetchProducts({
+                skus: [cleanSku, searchPhrase.trim()],
+                sort,
+                page: 1,
+                pageSize: 20,
+                customFilters: normalizedFilters,
+              });
+              if (skuRes?.items && skuRes.items.length > 0) {
+                rawItems = skuRes.items;
+                totalCount = skuRes.total_count || skuRes.items.length;
+              } else {
+                const single = await fetchProductBySku(cleanSku);
+                if (single) {
+                  rawItems = [single];
+                  totalCount = 1;
+                }
+              }
+            } catch {}
           }
         } catch (err) {
-          console.warn(`Target query failed for category ${target.catId}:`, err);
+          console.warn('Search by phrase failed:', err);
+        }
+      } else {
+        // 2. Resolve authentic GSF category targets (e.g. Brake Pads: 5467/816, Discs: 5470/871, Filters, Oil, Battery)
+        const targets = getCategoryTargets(categoryId, categoryName);
+
+        // Ensure active session ID
+        let sessionId = stored.sessionId || stored.vehicle?.sessionId;
+        if (!sessionId && stored.vrm) {
+          try {
+            const vrmDetails = await fetchVrmDetails(stored.vrm);
+            if (vrmDetails?.sessionId) sessionId = vrmDetails.sessionId;
+          } catch {}
+        }
+        if (!sessionId) {
+          sessionId = 'vdzY2NskTPnf'; // Default verified TecDoc fitment session
+        }
+
+        // Execute authentic ProductFilterWithBrandSort queries for each target
+        for (const target of targets) {
+          try {
+            const gCodes = stored.vehicle?.gCodePartialIDs;
+            let gCodeStr = '';
+            if (Array.isArray(gCodes) && gCodes.length > 0) {
+              gCodeStr = gCodes.join(',');
+            } else if (stored.vehicle?.gCodeIDs) {
+              gCodeStr = String(stored.vehicle.gCodeIDs);
+            } else if (vehicleMake.toLowerCase() === 'ford' && (cleanModel.toLowerCase().includes('fiesta') || rawModel.toLowerCase().includes('fiesta'))) {
+              gCodeStr = '174623,174625,174626,174630,174634,174638,174651,174656,174661,174665,174669,174671,174673,174678,174681';
+            }
+
+            const vFilter = {
+              session_id: sessionId,
+              year: stored.vehicle?.modelVersionTitle || stored.vehicle?.modelVersion || (vehicleMake.toLowerCase() === 'ford' ? '10/2005 - 04/2009' : String(vehicleYear || '2016')),
+              vrm: stored.vrm || '',
+              make: vehicleMake,
+              model: cleanModel || rawModel,
+              component_id: String(target.compId),
+              engine: stored.vehicle?.engineSize || stored.vehicle?.engine || (vehicleMake.toLowerCase() === 'ford' ? '1.2 litres' : ''),
+              body: stored.vehicle?.bodyStyle || '',
+              hp: stored.vehicle?.power || '',
+            };
+            if (gCodeStr) {
+              vFilter.gCodeIDs = gCodeStr;
+            }
+
+            const res = await fetchProductsWithBrandSort({
+              categoryIds: [target.catId],
+              vrmFilter: vFilter,
+              page: 1,
+              pageSize: 100,
+              customFilters: normalizedFilters,
+            });
+
+            if (res?.items && res.items.length > 0) {
+              const tagged = res.items.map((it) => ({
+                ...it,
+                category_id: String(target.catId),
+                category_name: target.name,
+              }));
+              rawItems = [...rawItems, ...tagged];
+              totalCount += (res.total_count || res.items.length);
+            }
+          } catch (err) {
+            console.warn(`Target query failed for category ${target.catId}:`, err);
+          }
+        }
+
+        // If category targets query succeeded and a search phrase was provided, filter by phrase
+        if (searchPhrase && rawItems.length > 0) {
+          const phraseLower = searchPhrase.toLowerCase().trim();
+          const filteredByPhrase = rawItems.filter((item) => {
+            const name = (item.name || '').toLowerCase();
+            const sku = (item.sku || '').toLowerCase();
+            const brand = getBrandName(item).toLowerCase();
+            const artNr = (item.art_nr || '').toLowerCase();
+            return name.includes(phraseLower) || sku.includes(phraseLower) || brand.includes(phraseLower) || artNr.includes(phraseLower);
+          });
+          if (filteredByPhrase.length > 0) {
+            rawItems = filteredByPhrase;
+            totalCount = filteredByPhrase.length;
+          }
         }
       }
 
-      // If specific vehicle fitment query returned items, deduplicate by SKU
+      // Deduplicate items by SKU
       if (rawItems.length > 0) {
         const seenSkus = new Set();
         rawItems = rawItems.filter((item) => {
@@ -589,29 +647,6 @@ export async function fetchCatalogProducts({
           seenSkus.add(s);
           return true;
         });
-      } else {
-        // Strict Fitment: If a vehicle is active, never fall back to loose fuzzy text search
-        // that matches 90 unrelated items across different vehicles/generations.
-        if (searchPhrase) {
-          try {
-            const queryRes = await fetchProducts({
-              categoryId: categoryId || null,
-              searchPhrase,
-              sort: { position: 'ASC' },
-              page: 1,
-              pageSize: 60,
-              customFilters: normalizedFilters,
-            });
-            rawItems = queryRes?.items || [];
-            totalCount = queryRes?.total_count || rawItems.length;
-          } catch {
-            rawItems = [];
-            totalCount = 0;
-          }
-        } else {
-          rawItems = [];
-          totalCount = 0;
-        }
       }
 
       // Tag items as compatible with the selected vehicle
@@ -957,12 +992,40 @@ export async function fetchCatalogProducts({
   } else {
     result = await fetchProducts({
       categoryId: categoryId || null,
-      searchPhrase: searchPhrase || null,
+      searchPhrase: searchPhrase ? searchPhrase.trim() : null,
       sort,
       page: currentPage,
       pageSize: targetPageSize,
       customFilters: normalizedFilters,
     });
+
+    // Fallback: If searchPhrase was an exact SKU that wasn't found by fulltext search, try exact SKU filter
+    if (searchPhrase && (!result?.items || result.items.length === 0)) {
+      const cleanSku = searchPhrase.trim().toUpperCase().replace(/\s+/g, '');
+      try {
+        const skuRes = await fetchProducts({
+          categoryId: categoryId || null,
+          skus: [cleanSku, searchPhrase.trim()],
+          sort,
+          page: currentPage,
+          pageSize: targetPageSize,
+          customFilters: normalizedFilters,
+        });
+        if (skuRes?.items && skuRes.items.length > 0) {
+          result = skuRes;
+        } else {
+          const single = await fetchProductBySku(cleanSku);
+          if (single) {
+            result = {
+              total_count: 1,
+              items: [single],
+              aggregations: [],
+              page_info: { current_page: 1, page_size: targetPageSize, total_pages: 1 },
+            };
+          }
+        }
+      } catch {}
+    }
   }
 
   let items = result.items || [];

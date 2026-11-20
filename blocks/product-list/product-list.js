@@ -92,7 +92,7 @@ export default async function decorate(block) {
   const urlParams = new URLSearchParams(window.location.search);
   const categoryId = urlParams.get('category_id') || '';
   const categoryName = urlParams.get('category_name') || '';
-  const searchPhrase = urlParams.get('q') || urlParams.get('search') || '';
+  let searchPhrase = urlParams.get('q') || urlParams.get('search') || '';
   let currentPage = parseInt(urlParams.get('page'), 10) || 1;
   let pageSize = parseInt(urlParams.get('pagesize'), 10) || appConfig.pageSizeDefault || 15;
   let sortField = 'position';
@@ -161,6 +161,13 @@ export default async function decorate(block) {
             <span class="skeleton-shimmer skeleton-line skeleton-count-shimmer" style="width: 220px; height: 18px; display: inline-block;"></span>
           </div>
           <div class="plp-toolbar-controls">
+            <div class="plp-control-group plp-search-control">
+              <form class="plp-inline-search-form" role="search">
+                <input type="search" id="plp-search-input" class="plp-search-input" placeholder="Search by SKU or name..." value="${searchPhrase.replace(/"/g, '&quot;')}" aria-label="Search products" />
+                <button type="submit" class="btn-plp-search" title="Search">🔍</button>
+                ${searchPhrase ? '<button type="button" class="btn-clear-plp-search" title="Clear search">✕</button>' : ''}
+              </form>
+            </div>
             <div class="plp-control-group">
               <label for="plp-sort-select">Sort By:</label>
               <select id="plp-sort-select" class="plp-select">
@@ -289,14 +296,26 @@ export default async function decorate(block) {
       return url + (url.includes('?') ? `&${vrmParam}` : `?${vrmParam}`);
     };
 
-    if (breadcrumbsEl && navInfo?.breadcrumbs?.length > 0) {
-      breadcrumbsEl.innerHTML = navInfo.breadcrumbs.map((b, idx) => {
-        const isLast = idx === navInfo.breadcrumbs.length - 1;
-        if (isLast) {
-          return `<span class="bc-current" aria-current="page">${b.name}</span>`;
+    if (breadcrumbsEl) {
+      if (searchPhrase && !categoryId) {
+        breadcrumbsEl.innerHTML = `
+          <a href="${appendVrm('/')}" class="bc-link">Home</a><span class="bc-sep">/</span>
+          <a href="${appendVrm('/plp.html')}" class="bc-link">All Parts</a><span class="bc-sep">/</span>
+          <span class="bc-current" aria-current="page">Search: "${searchPhrase}"</span>
+        `;
+      } else if (navInfo?.breadcrumbs?.length > 0) {
+        breadcrumbsEl.innerHTML = navInfo.breadcrumbs.map((b, idx) => {
+          const isLast = idx === navInfo.breadcrumbs.length - 1 && !searchPhrase;
+          if (isLast) {
+            return `<span class="bc-current" aria-current="page">${b.name}</span>`;
+          }
+          return `<a href="${appendVrm(b.href)}" class="bc-link">${b.name}</a><span class="bc-sep">/</span>`;
+        }).join(' ');
+
+        if (searchPhrase) {
+          breadcrumbsEl.innerHTML += ` <span class="bc-current" aria-current="page">Search: "${searchPhrase}"</span>`;
         }
-        return `<a href="${appendVrm(b.href)}" class="bc-link">${b.name}</a><span class="bc-sep">/</span>`;
-      }).join(' ');
+      }
     }
 
     // Quick pills bar is shown only on Leaf category pages for quick hopping between siblings
@@ -946,7 +965,15 @@ export default async function decorate(block) {
       const startItem = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
       const endItem = Math.min(currentPage * pageSize, total);
 
-      if (viewMode === 'fitted' && stored.hasVehicle) {
+      if (searchPhrase && stored.hasVehicle && viewMode === 'fitted') {
+        const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
+        const targetLabel = isManual
+          ? (result.vehicleSummary || `${stored.vehicle?.make || ''} ${stored.vehicle?.model || ''}`.trim() || 'Selected Vehicle')
+          : `${result.vehicleSummary || result.vrm} (${result.vrm})`;
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${searchPhrase}</strong>" matching <strong>${targetLabel}</strong>`;
+      } else if (searchPhrase) {
+        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${searchPhrase}</strong>"`;
+      } else if (viewMode === 'fitted' && stored.hasVehicle) {
         const scopeText = categoryName ? `${categoryName} ` : '';
         const isManual = Boolean(stored.vehicle?.isManualSelect || !stored.vrm);
         const targetLabel = isManual
@@ -956,8 +983,6 @@ export default async function decorate(block) {
       } else if (stored.hasVehicle) {
         const scopeText = categoryName ? `in ${categoryName}` : 'in catalog';
         countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts ${scopeText} (All Products)`;
-      } else if (searchPhrase) {
-        countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts for "<strong>${searchPhrase}</strong>"`;
       } else {
         const scopeText = categoryName ? `in ${categoryName}` : '';
         countEl.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${total.toLocaleString()}</strong> parts ${scopeText}`;
@@ -968,16 +993,25 @@ export default async function decorate(block) {
         grid.innerHTML = `
           <div class="plp-no-results">
             <div class="no-results-icon">🔍</div>
-            <h3>No compatible parts found</h3>
-            <p>Try clearing active filters, or clear your vehicle selection to browse all catalog items.</p>
-            <button type="button" class="btn btn-primary btn-reset-search">Reset Filters</button>
+            <h3>No products found ${searchPhrase ? `for "<strong>${searchPhrase}</strong>"` : ''}</h3>
+            <p>Try searching by part name (e.g. Brake Pads, Oil, Battery), brand, or exact SKU.</p>
+            <button type="button" class="btn btn-primary btn-reset-search">Browse All Parts</button>
           </div>
         `;
         const resetBtn = grid.querySelector('.btn-reset-search');
         if (resetBtn) {
           resetBtn.addEventListener('click', () => {
             activeFilters = {};
+            searchPhrase = '';
             currentPage = 1;
+            const p = new URLSearchParams(window.location.search);
+            p.delete('q');
+            p.delete('search');
+            window.history.pushState({}, '', `${window.location.pathname}${p.toString() ? `?${p.toString()}` : ''}`);
+            const inlineInput = block.querySelector('#plp-search-input');
+            if (inlineInput) inlineInput.value = '';
+            const headerInput = document.querySelector('.header-search-input');
+            if (headerInput) headerInput.value = '';
             loadProducts();
           });
         }
@@ -1049,6 +1083,50 @@ export default async function decorate(block) {
     currentPage = 1;
     loadProducts();
   });
+
+  // Inline Toolbar Search
+  const searchFormInline = block.querySelector('.plp-inline-search-form');
+  const searchInputInline = block.querySelector('#plp-search-input');
+  if (searchFormInline && searchInputInline) {
+    searchFormInline.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = searchInputInline.value.trim();
+      searchPhrase = val;
+      currentPage = 1;
+
+      const p = new URLSearchParams(window.location.search);
+      if (val) {
+        p.set('q', val);
+      } else {
+        p.delete('q');
+        p.delete('search');
+      }
+      window.history.pushState({}, '', `${window.location.pathname}${p.toString() ? `?${p.toString()}` : ''}`);
+
+      const headerInput = document.querySelector('.header-search-input');
+      if (headerInput) headerInput.value = val;
+
+      loadProducts();
+    });
+
+    const clearSearchBtnInline = block.querySelector('.btn-clear-plp-search');
+    if (clearSearchBtnInline) {
+      clearSearchBtnInline.addEventListener('click', () => {
+        searchInputInline.value = '';
+        searchPhrase = '';
+        currentPage = 1;
+        const p = new URLSearchParams(window.location.search);
+        p.delete('q');
+        p.delete('search');
+        window.history.pushState({}, '', `${window.location.pathname}${p.toString() ? `?${p.toString()}` : ''}`);
+
+        const headerInput = document.querySelector('.header-search-input');
+        if (headerInput) headerInput.value = '';
+
+        loadProducts();
+      });
+    }
+  }
 
   // Listen to vehicle updates
   window.addEventListener('vehicle-lookup:updated', () => {

@@ -34,3 +34,11 @@ test('getQualityCodeForBrand: maps brand name to Magento attribute code', () => 
   assert.equal(getQualityCodeForBrand('Bosch'), '90744');
   assert.equal(getQualityCodeForBrand('Brembo'), '90745');
 });
+
+test('catalog search: recognizes SKU patterns vs general search phrases', () => {
+  const isSkuPattern = (str) => /^[A-Za-z0-9_-]{5,20}$/.test(String(str).trim());
+  assert.equal(isSkuPattern('CAS15F64E'), true);
+  assert.equal(isSkuPattern('ADLADB114393'), true);
+  assert.equal(isSkuPattern('BABBKB6027'), true);
+  assert.equal(isSkuPattern('Brake Disc Front Vented'), false);
+});

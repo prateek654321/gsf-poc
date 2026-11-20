@@ -37,5 +37,6 @@ if (typeof globalThis.document === 'undefined') {
     querySelector: () => null,
     querySelectorAll: () => [],
     addEventListener: () => {},
+    cookie: '',
   };
 }

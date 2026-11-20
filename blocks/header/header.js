@@ -84,6 +84,8 @@ export default async function decorate(block) {
     const query = searchForm.querySelector('input').value.trim();
     if (query) {
       window.location.href = `/plp.html?q=${encodeURIComponent(query)}`;
+    } else if (window.location.pathname.includes('plp.html')) {
+      window.location.href = '/plp.html';
     }
   });
 
