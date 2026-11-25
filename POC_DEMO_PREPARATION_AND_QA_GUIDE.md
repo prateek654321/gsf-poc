@@ -171,7 +171,19 @@ Keep these test values handy during your presentation:
 > - **Fitment SKUs:** Authentic REST endpoints query `/gsf-vrm/skus` with active vehicle session IDs to retrieve verified compatible SKUs.
 > - **In-Memory & Storage Caching:** Responses are cached in `sessionStorage` and in-memory caches, guaranteeing 0ms response times for repeated category hops.
 
-#### Q7: What is Adobe App Builder and API Mesh, and how does this POC transition to it?
+#### Q7: Why are VRM/fitment APIs currently routed through Magento, and how will production optimize this?
+> **Answer:**  
+> - **Current POC Proxy Architecture (Why Magento?):**  
+>   The third-party VRM portal / DVLA data provider enforces strict IP and domain whitelisting. Because our POC preview and development URLs (`*.aem.page`, `*.aem.live`) are dynamic edge environments that are not yet whitelisted on the external VRM portal, Magento currently acts as an authorized gateway proxy:  
+>   `Client (EDS) ➔ Magento 2 Backend Proxy ➔ External VRM Portal ➔ Magento ➔ Client (EDS)`
+> - **Latency Overhead Today:**  
+>   This multi-hop routing adds intermediate server latency (~200–500ms) because requests must be processed by Magento's PHP/web tier before reaching the VRM portal.
+> - **Future Production Architecture (Direct Whitelisting / API Mesh):**  
+>   1. **Direct Whitelisting / Edge Calling:** For production, GSF's domain and edge endpoints can be whitelisted directly on the VRM portal, allowing EDS to query the vehicle API directly.
+>   2. **Adobe App Builder + API Mesh:** Alternatively, API Mesh will orchestrate the VRM call directly without touching Magento.
+>   3. **Latency Reduction & Scale:** Eliminating the Magento hop cuts vehicle lookup response times significantly (saving 300–500ms per lookup), frees up Magento application server capacity for cart and checkout transactions, and enables edge-level caching of static vehicle specification datasets.
+
+#### Q8: What is Adobe App Builder and API Mesh, and how does this POC transition to it?
 > **Answer:**  
 > In production, Adobe recommends routing headless calls through **Adobe App Builder + API Mesh**.  
 > API Mesh acts as a high-performance GraphQL reverse proxy and orchestration layer that combines Adobe Commerce, DVLA VRM APIs, TecDoc fitment services, ERP pricing, and inventory into a single unified endpoint.  
@@ -180,22 +192,25 @@ Keep these test values handy during your presentation:
 ```mermaid
 flowchart TD
     Client["EDS Storefront (Client)"]
-    subgraph Current ["Current POC Architecture"]
+    subgraph Current ["Current POC Architecture (Magento Hop)"]
         GQL["Adobe Commerce GraphQL"]
-        REST["TecDoc / DVLA REST"]
+        M_Proxy["Magento VRM Proxy<br/>(/gsf-vrm/vrmdetails)"]
+        VRM_Ext["External VRM / DVLA Portal"]
+        GQL --> AC["Adobe Commerce DB"]
+        M_Proxy -->|Whitelisted IP| VRM_Ext
     end
-    subgraph Future ["Production Architecture (App Builder)"]
-        Mesh["Adobe App Builder + API Mesh<br/>Unified GraphQL Endpoint"]
-        AC["Adobe Commerce"]
-        TD["TecDoc Engine"]
-        ERP["GSF ERP / Infor"]
+    subgraph Future ["Production Target (Direct Edge / API Mesh)"]
+        Mesh["Adobe App Builder + API Mesh<br/>Unified GraphQL Gateway"]
+        AC_Prod["Adobe Commerce"]
+        TD_Prod["Direct VRM / TecDoc Engine<br/>(Bypasses Magento, saves ~400ms)"]
+        ERP["GSF ERP / Infor (Branch Stock)"]
     end
 
     Client -->|Current| GQL
-    Client -->|Current| REST
+    Client -->|Current| M_Proxy
     Client -.->|Zero-Code Transition| Mesh
-    Mesh --> AC
-    Mesh --> TD
+    Mesh --> AC_Prod
+    Mesh --> TD_Prod
     Mesh --> ERP
 ```
 
