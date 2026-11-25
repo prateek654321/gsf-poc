@@ -21,7 +21,82 @@ const DEFAULT_CONFIG = {
   pageSizeOptions: [15, 30, 45],
 };
 
+export const AVAILABLE_STORES = [
+  {
+    code: 'default',
+    id: 1,
+    name: 'Default Store',
+    label: 'Default (English)',
+    shortLabel: 'Default',
+    description: 'Standard retail consumer store view',
+    icon: '🌐',
+  },
+  {
+    code: 'mobile_en',
+    id: 11,
+    name: 'Mobile App English',
+    label: 'Mobile App (mobile_en)',
+    shortLabel: 'Mobile App',
+    description: 'Optimized mobile app store view',
+    icon: '📱',
+  },
+  {
+    code: 'staff_en',
+    id: 13,
+    name: 'Staff Website English',
+    label: 'Staff Trade (staff_en)',
+    shortLabel: 'Staff Trade',
+    description: 'Staff & commercial trade account pricing',
+    icon: '👔',
+  },
+];
+
 let activeConfig = null;
+
+/**
+ * Returns the currently active store code.
+ * Checks localStorage first, then window.CONFIG, metadata, and defaults.
+ * @returns {string}
+ */
+export function getActiveStoreCode() {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = window.localStorage?.getItem('gsf_store_code');
+      if (saved && AVAILABLE_STORES.some((s) => s.code === saved)) {
+        return saved;
+      }
+    } catch {}
+  }
+  return window.CONFIG?.storeCode
+    || getMetadata('store-code')
+    || window.ENV?.STORE_CODE
+    || DEFAULT_CONFIG.storeCode;
+}
+
+/**
+ * Sets the active store code, persisting to localStorage and cookie,
+ * invalidating cached configuration, and dispatching a change event.
+ * @param {string} storeCode
+ */
+export function setActiveStoreCode(storeCode) {
+  if (!AVAILABLE_STORES.some((s) => s.code === storeCode)) return;
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage?.setItem('gsf_store_code', storeCode);
+      document.cookie = `gsf_store_code=${storeCode};path=/;max-age=31536000;SameSite=Lax`;
+    } catch {}
+    if (window.CONFIG) {
+      window.CONFIG.storeCode = storeCode;
+    }
+    activeConfig = null;
+    try {
+      sessionStorage.removeItem('gsf_categories_cache');
+    } catch {}
+    if (typeof CustomEvent !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gsf:store-changed', { detail: { storeCode } }));
+    }
+  }
+}
 
 /**
  * Returns configuration adhering to EDS standards:
@@ -35,41 +110,51 @@ let activeConfig = null;
 export function getConfig() {
   if (activeConfig) return activeConfig;
 
+  const currentStore = getActiveStoreCode();
+  const replaceStore = (url) => (url ? url.replace(/\/rest\/[^/]+\/V1\//, `/rest/${currentStore}/V1/`) : url);
+
+  const rawVrmDetails = window.CONFIG?.vrmDetailsEndpoint
+    || getMetadata('vrm-details-endpoint')
+    || window.ENV?.VRM_DETAILS_ENDPOINT
+    || DEFAULT_CONFIG.vrmDetailsEndpoint;
+
+  const rawFitmentSkus = window.CONFIG?.fitmentSkusEndpoint
+    || getMetadata('fitment-skus-endpoint')
+    || window.ENV?.FITMENT_SKUS_ENDPOINT
+    || DEFAULT_CONFIG.fitmentSkusEndpoint;
+
+  const rawVehicleComp = window.CONFIG?.vehicleCompatibilityEndpoint
+    || getMetadata('vehicle-compatibility-endpoint')
+    || window.ENV?.VEHICLE_COMPATIBILITY_ENDPOINT
+    || DEFAULT_CONFIG.vehicleCompatibilityEndpoint;
+
+  const rawManufacturers = window.CONFIG?.manufacturersEndpoint
+    || getMetadata('manufacturers-endpoint')
+    || window.ENV?.MANUFACTURERS_ENDPOINT
+    || DEFAULT_CONFIG.manufacturersEndpoint;
+
+  const rawModels = window.CONFIG?.modelsEndpoint
+    || getMetadata('models-endpoint')
+    || window.ENV?.MODELS_ENDPOINT
+    || DEFAULT_CONFIG.modelsEndpoint;
+
+  const rawMetadata = window.CONFIG?.vehicleMetadataEndpoint
+    || getMetadata('vehicle-metadata-endpoint')
+    || window.ENV?.VEHICLE_METADATA_ENDPOINT
+    || DEFAULT_CONFIG.vehicleMetadataEndpoint;
+
   activeConfig = {
     magentoGraphqlEndpoint: window.CONFIG?.magentoGraphqlEndpoint
       || getMetadata('magento-graphql-endpoint')
       || window.ENV?.MAGENTO_GRAPHQL_ENDPOINT
       || DEFAULT_CONFIG.magentoGraphqlEndpoint,
 
-    vrmDetailsEndpoint: window.CONFIG?.vrmDetailsEndpoint
-      || getMetadata('vrm-details-endpoint')
-      || window.ENV?.VRM_DETAILS_ENDPOINT
-      || DEFAULT_CONFIG.vrmDetailsEndpoint,
-
-    fitmentSkusEndpoint: window.CONFIG?.fitmentSkusEndpoint
-      || getMetadata('fitment-skus-endpoint')
-      || window.ENV?.FITMENT_SKUS_ENDPOINT
-      || DEFAULT_CONFIG.fitmentSkusEndpoint,
-
-    vehicleCompatibilityEndpoint: window.CONFIG?.vehicleCompatibilityEndpoint
-      || getMetadata('vehicle-compatibility-endpoint')
-      || window.ENV?.VEHICLE_COMPATIBILITY_ENDPOINT
-      || DEFAULT_CONFIG.vehicleCompatibilityEndpoint,
-
-    manufacturersEndpoint: window.CONFIG?.manufacturersEndpoint
-      || getMetadata('manufacturers-endpoint')
-      || window.ENV?.MANUFACTURERS_ENDPOINT
-      || DEFAULT_CONFIG.manufacturersEndpoint,
-
-    modelsEndpoint: window.CONFIG?.modelsEndpoint
-      || getMetadata('models-endpoint')
-      || window.ENV?.MODELS_ENDPOINT
-      || DEFAULT_CONFIG.modelsEndpoint,
-
-    vehicleMetadataEndpoint: window.CONFIG?.vehicleMetadataEndpoint
-      || getMetadata('vehicle-metadata-endpoint')
-      || window.ENV?.VEHICLE_METADATA_ENDPOINT
-      || DEFAULT_CONFIG.vehicleMetadataEndpoint,
+    vrmDetailsEndpoint: replaceStore(rawVrmDetails),
+    fitmentSkusEndpoint: replaceStore(rawFitmentSkus),
+    vehicleCompatibilityEndpoint: replaceStore(rawVehicleComp),
+    manufacturersEndpoint: replaceStore(rawManufacturers),
+    modelsEndpoint: replaceStore(rawModels),
+    vehicleMetadataEndpoint: replaceStore(rawMetadata),
 
     catalogApiEndpoint: window.CONFIG?.catalogApiEndpoint
       || getMetadata('catalog-api-endpoint')
@@ -85,10 +170,7 @@ export function getConfig() {
       || window.ENV?.SPECIAL_COUPON
       || DEFAULT_CONFIG.specialCoupon,
 
-    storeCode: window.CONFIG?.storeCode
-      || getMetadata('store-code')
-      || window.ENV?.STORE_CODE
-      || DEFAULT_CONFIG.storeCode,
+    storeCode: currentStore,
 
     pageSizeDefault: window.CONFIG?.pageSizeDefault
       || parseInt(getMetadata('page-size-default'), 10)

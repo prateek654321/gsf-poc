@@ -11,6 +11,11 @@ import {
   normalizeVrm,
   getVehicleMotAndHealth,
 } from '../../scripts/vehicle-lookup.js';
+import {
+  getActiveStoreCode,
+  setActiveStoreCode,
+  AVAILABLE_STORES,
+} from '../../scripts/config.js';
 
 export default async function decorate(block) {
   block.innerHTML = '';
@@ -216,6 +221,8 @@ export default async function decorate(block) {
     // Toggle dropdown
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      const sDd = document.querySelector('.header-store-dropdown');
+      if (sDd) sDd.style.display = 'none';
       const isOpen = dropdown.style.display !== 'none';
       dropdown.style.display = isOpen ? 'none' : 'block';
       btn.setAttribute('aria-expanded', String(!isOpen));
@@ -298,9 +305,90 @@ export default async function decorate(block) {
   window.addEventListener('vehicle-lookup:cleared', () => renderGarageWidget(garageWidget));
   window.addEventListener('garage:updated', () => renderGarageWidget(garageWidget));
 
+  // Store View Switcher Widget (default, mobile_en, staff_en)
+  const storeWidget = document.createElement('div');
+  storeWidget.className = 'header-store-widget';
+
+  function renderStoreWidget(container) {
+    const currentCode = getActiveStoreCode();
+    const current = AVAILABLE_STORES.find((s) => s.code === currentCode) || AVAILABLE_STORES[2];
+
+    container.innerHTML = `
+      <button type="button" class="header-store-btn" aria-expanded="false" title="Switch Adobe Commerce Store View (Current: ${current.label})">
+        <span class="store-icon">${current.icon}</span>
+        <div class="store-text-wrap">
+          <span class="store-k">Store</span>
+          <span class="store-v">${current.shortLabel}</span>
+        </div>
+        <span class="store-chevron">▾</span>
+      </button>
+      <div class="header-store-dropdown" style="display: none;">
+        <div class="store-dropdown-header">
+          <div class="store-title-row">
+            <h4>🏬 Store View</h4>
+            <span class="store-active-badge">${current.code}</span>
+          </div>
+          <p class="store-subtitle">Switch Adobe Commerce store view for catalog, pricing & fitment.</p>
+        </div>
+        <div class="store-option-list">
+          ${AVAILABLE_STORES.map((s) => {
+            const isActive = s.code === currentCode;
+            return `
+              <div class="store-option-card ${isActive ? 'is-active' : ''}" data-code="${s.code}">
+                <div class="store-option-icon">${s.icon}</div>
+                <div class="store-option-details">
+                  <div class="store-option-title-row">
+                    <strong class="store-option-name">${s.label}</strong>
+                    ${isActive ? '<span class="store-status-active">✓ Active</span>' : ''}
+                  </div>
+                  <span class="store-option-desc">${s.description}</span>
+                  <span class="store-option-code">Store ID: ${s.id} • <code>Store: ${s.code}</code></span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    const btn = container.querySelector('.header-store-btn');
+    const dropdown = container.querySelector('.header-store-dropdown');
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dropdown.style.display !== 'none';
+      const garageDd = garageWidget.querySelector('.header-garage-dropdown');
+      if (garageDd) garageDd.style.display = 'none';
+      dropdown.style.display = isOpen ? 'none' : 'block';
+      btn.setAttribute('aria-expanded', String(!isOpen));
+    });
+
+    dropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    container.querySelectorAll('.store-option-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const targetCode = card.dataset.code;
+        if (targetCode && targetCode !== currentCode) {
+          setActiveStoreCode(targetCode);
+          dropdown.style.display = 'none';
+          renderStoreWidget(container);
+          window.location.reload();
+        }
+      });
+    });
+  }
+
+  renderStoreWidget(storeWidget);
+
+  window.addEventListener('gsf:store-changed', () => renderStoreWidget(storeWidget));
+
   document.addEventListener('click', () => {
-    const dd = garageWidget.querySelector('.header-garage-dropdown');
-    if (dd) dd.style.display = 'none';
+    const gDd = garageWidget.querySelector('.header-garage-dropdown');
+    if (gDd) gDd.style.display = 'none';
+    const sDd = storeWidget.querySelector('.header-store-dropdown');
+    if (sDd) sDd.style.display = 'none';
   });
 
   // User Actions (Sign in, Basket)
@@ -320,7 +408,7 @@ export default async function decorate(block) {
     </div>
   `;
 
-  brandBar.append(logo, searchForm, branchLink, garageWidget, actions);
+  brandBar.append(logo, searchForm, branchLink, garageWidget, storeWidget, actions);
 
   // 4. Navigation Bar (GSF Corporate Navy #002F6E)
   const navBar = document.createElement('nav');
