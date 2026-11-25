@@ -44,6 +44,7 @@ flowchart LR
 * **Talking Points:**
   - *"Traditional monolithic e-commerce platforms take 3 to 6 seconds to hydrate complex React/Vue bundles. With Adobe Edge Delivery Services, the initial HTML is served directly from the CDN edge in under 200ms."*
   - *"Notice that there is zero layout shift (CLS: 0). The hero banners, navigation, and vehicle search bar appear instantly."*
+  - *"Notice the **Store View Switcher** in the header: it allows seamless switching between **`default`** (Retail Consumer), **`mobile_en`** (Mobile App), and **`staff_en`** (Staff & Trade Account). AEM EDS dynamically adjusts the GraphQL `Store` header and REST fitment routes on the fly without backend re-architecting."*
 
 ### Phase 2: UK Vehicle Registration Mark (VRM) Lookup (3 mins)
 * **URL:** [https://main--gsf-poc--prateek654321.aem.live/](https://main--gsf-poc--prateek654321.aem.live/)
