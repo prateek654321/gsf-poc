@@ -9,22 +9,7 @@
       var h = window.location.hash || '';
       // Automatic routing for clean extensionless URLs and homepage
       if (p === '/' || p === '' || p === '/index') {
-        fetch('/index.html' + s + h)
-          .then(function(res) {
-            if (!res.ok) throw new Error('Fetch failed');
-            return res.text();
-          })
-          .then(function(html) {
-            document.open();
-            document.write(html);
-            document.close();
-            if (window.location.pathname !== '/') {
-              window.history.replaceState({}, '', '/' + s + h);
-            }
-          })
-          .catch(function() {
-            window.location.replace('/index.html' + s + h);
-          });
+        window.location.replace('/index.html' + s + h);
         return;
       } else if (p === '/categories' || p === '/categories/') {
         window.location.replace('/categories.html' + s + h);
