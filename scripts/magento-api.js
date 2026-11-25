@@ -33,7 +33,7 @@ export async function executeGraphQL(query, variables = {}) {
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      Store: MAGENTO_CONFIG.storeCode || 'default',
+      Store: MAGENTO_CONFIG.storeCode || 'staff_en',
     },
     body: JSON.stringify({ query, variables }),
   });

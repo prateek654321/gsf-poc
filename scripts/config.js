@@ -7,16 +7,16 @@ import { getMetadata } from './aem.js';
  */
 const DEFAULT_CONFIG = {
   magentoGraphqlEndpoint: 'https://mcstaging.gsfcarparts.com/graphql',
-  vrmDetailsEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/vrmdetails',
-  fitmentSkusEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/skus',
-  vehicleCompatibilityEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/vehiclecompatibility',
-  manufacturersEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/manufacturers',
-  modelsEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/models',
-  vehicleMetadataEndpoint: 'https://mcstaging.gsfcarparts.com/rest/default/V1/gsf-vrm/vehiclemetadata',
+  vrmDetailsEndpoint: 'https://mcstaging.gsfcarparts.com/rest/staff_en/V1/gsf-vrm/vrmdetails',
+  fitmentSkusEndpoint: 'https://mcstaging.gsfcarparts.com/rest/staff_en/V1/gsf-vrm/skus',
+  vehicleCompatibilityEndpoint: 'https://mcstaging.gsfcarparts.com/rest/staff_en/V1/gsf-vrm/vehiclecompatibility',
+  manufacturersEndpoint: 'https://mcstaging.gsfcarparts.com/rest/staff_en/V1/gsf-vrm/manufacturers',
+  modelsEndpoint: 'https://mcstaging.gsfcarparts.com/rest/staff_en/V1/gsf-vrm/models',
+  vehicleMetadataEndpoint: 'https://mcstaging.gsfcarparts.com/rest/staff_en/V1/gsf-vrm/vehiclemetadata',
   catalogApiEndpoint: '', // Destination for future Adobe App Builder + API Mesh endpoint
   placeholderImage: 'https://mcstaging.gsfcarparts.com/media/catalog/product/placeholder/default/product_placeholder_2.png',
   specialCoupon: 'PARTS30',
-  storeCode: 'default',
+  storeCode: 'staff_en',
   pageSizeDefault: 15,
   pageSizeOptions: [15, 30, 45],
 };
