@@ -183,44 +183,83 @@ Keep these test values handy during your presentation:
 >   2. **Adobe App Builder + API Mesh:** Alternatively, API Mesh will orchestrate the VRM call directly without touching Magento.
 >   3. **Latency Reduction & Scale:** Eliminating the Magento hop cuts vehicle lookup response times significantly (saving 300–500ms per lookup), frees up Magento application server capacity for cart and checkout transactions, and enables edge-level caching of static vehicle specification datasets.
 
-#### Q8: What is Adobe App Builder and API Mesh, and how does this POC transition to it?
+#### Q8: What is the scope of ACCS (Adobe Commerce Cloud Services) in this project, and how can we do this through ACCS in the future?
 > **Answer:**  
-> In production, Adobe recommends routing headless calls through **Adobe App Builder + API Mesh**.  
-> API Mesh acts as a high-performance GraphQL reverse proxy and orchestration layer that combines Adobe Commerce, DVLA VRM APIs, TecDoc fitment services, ERP pricing, and inventory into a single unified endpoint.  
-> **Our POC is already 100% API Mesh-ready:** [scripts/catalog-service.js](file:///d:/accs/gsf-eds-store/scripts/catalog-service.js#L457-L480) contains a native bridge. Once GSF provisions an API Mesh endpoint, simply defining `catalogApiEndpoint` in `config.json` automatically routes all calls through API Mesh with zero frontend code modifications.
+> **1. What is ACCS in this Architecture?**  
+> **ACCS** (**Adobe Commerce Cloud Services** / **Adobe Commerce as a Cloud Service**) represents Adobe's modern, cloud-native suite of high-throughput SaaS microservices designed to decouple frontend client experiences from monolithic Magento application servers. It comprises:
+> - **Adobe Commerce API Mesh** (Serverless GraphQL orchestration gateway built on Adobe App Builder).
+> - **Adobe Commerce Catalog Service (SaaS)** (Global edge catalog cache delivering sub-50ms product, category, and pricing queries).
+> - **Adobe Commerce Live Search** (Sensei AI-powered automotive part search, fuzzy typo tolerance, facet counts, and merchandising rules).
+> - **Adobe Commerce Product Recommendations** (Intelligent automotive cross-sell engines, e.g. *Brake Pads + Brake Discs + Fluid*).
+> - **Adobe Commerce Payment Services** (SaaS checkout payment integrations for Apple Pay, Google Pay, PayPal, and credit cards).
+>
+> **2. Current POC Scope vs. Future ACCS Scope:**
+>
+> | Dimension | Current POC Implementation | Future Target with ACCS |
+> | :--- | :--- | :--- |
+> | **Storefront Layer** | AEM Edge Delivery Services (Vanilla JS, 100/100 CWV) | **Remains 100% Identical** (AEM EDS unchanged) |
+> | **Catalog Queries** | Direct browser call to Magento 2 GraphQL (`/graphql`) | **Adobe Commerce Catalog Service (SaaS)** via API Mesh |
+> | **Backend Latency** | ~350ms – 700ms (PHP / MySQL processing on staging) | **<50ms** (Cached globally on Adobe SaaS Edge) |
+> | **Fitment Engine (VRM)**| Proxied through Magento REST (`/gsf-vrm/*`) | **Directly orchestrated in API Mesh** (bypasses Magento) |
+> | **Search & Filtering** | In-memory substring & basic Magento GraphQL filter | **Adobe Commerce Live Search** (Sensei AI, facet counts) |
+> | **ERP / Branch Stock** | Simulated / client-side mock | **API Mesh joins Infor ERP / branch inventory in real-time** |
+> | **Licensing / Cost** | Zero middleware required for POC demonstration | Enterprise Adobe Commerce Cloud ecosystem |
+>
+> **3. Why We Built the POC Without ACCS First, and Why ACCS is the Production Target:**
+> - **Why Zero-ACCS for POC:** To prove that AEM Edge Delivery Services can achieve 100/100 Core Web Vitals and full automotive VRM fitment directly against standard Magento without requiring expensive licensing, complex middleware, or months of setup.
+> - **Why ACCS for Production:** Monolithic Magento MySQL/PHP queries cannot match SaaS edge speed under peak trading. Furthermore, external VRM/DVLA portals require static whitelisted IPs—API Mesh provides this static gateway, bypassing Magento entirely and cutting 300–500ms off vehicle lookups.
+>
+> **4. Future Production Blueprint with ACCS:**
+>
+> ```mermaid
+> flowchart TD
+>     subgraph Browser ["AEM Edge Delivery Storefront (Fastly / Cloudflare)"]
+>         EDS["AEM EDS Storefront<br/>(scripts/catalog-service.js, vehicle-search.js, product-list.js)"]
+>     end
+> 
+>     subgraph Current ["Current POC Flow (Direct Monolith)"]
+>         M_GQL["Magento 2 GraphQL<br/>mcstaging.gsfcarparts.com"]
+>         M_REST["Magento REST VRM Proxy<br/>/V1/gsf-vrm/*"]
+>     end
+> 
+>     subgraph FutureACCS ["Future ACCS Flow (Cloud Services & API Mesh)"]
+>         Mesh["Adobe App Builder + API Mesh<br/>(Unified GraphQL Gateway)"]
+>         CatSvc["Adobe SaaS Catalog Service<br/>(Sub-50ms global cache)"]
+>         LiveSearch["Adobe Commerce Live Search<br/>(Sensei AI & Merchandising)"]
+>         DirectVRM["External DVLA / TecDoc VRM Portal<br/>(Whitelisted Static Mesh IP)"]
+>         ERP["GSF Infor ERP<br/>(180+ Branch Click & Collect Stock)"]
+>         M_Core["Magento / Commerce Core<br/>(Cart, Checkout, Customer Account)"]
+>     end
+> 
+>     %% Current Paths
+>     EDS -->|1. Direct GraphQL| M_GQL
+>     EDS -->|2. Direct REST| M_REST
+> 
+>     %% Future Paths (Zero Frontend Code Change)
+>     EDS -.->|Single Endpoint: catalogApiEndpoint| Mesh
+>     Mesh --> CatSvc
+>     Mesh --> LiveSearch
+>     Mesh --> DirectVRM
+>     Mesh --> ERP
+>     Mesh --> M_Core
+> ```
+>
+> **5. How We Do This Through ACCS (Step-by-Step Transition):**  
+> **Our POC is already 100% ACCS / API Mesh-ready.** In [scripts/catalog-service.js](file:///d:/accs/gsf-eds-store/scripts/catalog-service.js#L470-L485) and [scripts/config.js](file:///d:/accs/gsf-eds-store/scripts/config.js#L16), the native bridge is already deployed:
+> 1. **Step 1 (Provision App Builder & Mesh):** Define the mesh configuration in `mesh.json` joining Adobe Commerce GraphQL and the external VRM/TecDoc REST endpoints.
+> 2. **Step 2 (Whitelist Mesh IP):** Whitelist the static outbound IP of API Mesh on the DVLA/VRM provider portal, eliminating the Magento proxy hop.
+> 3. **Step 3 (Enable SaaS Catalog Service & Live Search):** Synchronize the catalog to Adobe's multi-tenant SaaS edge cache and route queries via the Mesh resolver.
+> 4. **Step 4 (Zero-Code Frontend Activation):** Simply set `"catalogApiEndpoint": "https://graph.adobe.io/api/.../graphql"` in `config.json`. The entire storefront automatically routes through ACCS with **zero changes to UI blocks, CSS styles, or user experience**.
+>
+> If API Mesh is temporarily unavailable, the system automatically falls back to direct client-side resolution without downtime.
 
-```mermaid
-flowchart TD
-    Client["EDS Storefront (Client)"]
-    subgraph Current ["Current POC Architecture (Magento Hop)"]
-        GQL["Adobe Commerce GraphQL"]
-        M_Proxy["Magento VRM Proxy<br/>(/gsf-vrm/vrmdetails)"]
-        VRM_Ext["External VRM / DVLA Portal"]
-        GQL --> AC["Adobe Commerce DB"]
-        M_Proxy -->|Whitelisted IP| VRM_Ext
-    end
-    subgraph Future ["Production Target (Direct Edge / API Mesh)"]
-        Mesh["Adobe App Builder + API Mesh<br/>Unified GraphQL Gateway"]
-        AC_Prod["Adobe Commerce"]
-        TD_Prod["Direct VRM / TecDoc Engine<br/>(Bypasses Magento, saves ~400ms)"]
-        ERP["GSF ERP / Infor (Branch Stock)"]
-    end
-
-    Client -->|Current| GQL
-    Client -->|Current| M_Proxy
-    Client -.->|Zero-Code Transition| Mesh
-    Mesh --> AC_Prod
-    Mesh --> TD_Prod
-    Mesh --> ERP
-```
-
-#### Q8: Why did the POC use native ES6 modules and zero npm runtime dependencies instead of a modern framework like React?
+#### Q9: Why did the POC use native ES6 modules and zero npm runtime dependencies instead of a modern framework like React?
 > **Answer:**  
 > This directly adheres to **Adobe Edge Delivery Services Gold Standards**:
 > - Framework bundles (React + ReactDOM + Next.js) add **150KB to 350KB** of compressed JavaScript that must be downloaded, parsed, and executed before any user interaction can occur. On mobile devices with 3G/4G connections, this adds 1.5 to 3 seconds of blocking thread time.
 > - By leveraging standard browser Web APIs and native ES6 modules, our entire JavaScript footprint is a fraction of the size. The browser parses it natively with near-zero CPU cost, guaranteeing a **100 Lighthouse Performance score**.
 
-#### Q9: What are the three phases of the EDS lifecycle (`loadEager`, `loadLazy`, `loadDelayed`) and why do they matter?
+#### Q10: What are the three phases of the EDS lifecycle (`loadEager`, `loadLazy`, `loadDelayed`) and why do they matter?
 > **Answer:**  
 > Adobe EDS strictly enforces a 3-phase execution model:
 > 1. **`loadEager()`**: Renders the document language, decorates the first section, and loads the LCP image. Must execute synchronously with zero network requests so the user sees the page in under 500ms.
@@ -231,22 +270,22 @@ flowchart TD
 
 ### Category C: Automotive Fitment & Catalog Nuances
 
-#### Q10: What happens when a customer enters an invalid or unrecognized UK registration?
+#### Q11: What happens when a customer enters an invalid or unrecognized UK registration?
 > **Answer:**  
 > The registration input enforces UK plate syntax (`^[A-Z0-9]{2,7}$`). If an invalid plate or unrecognized vehicle is submitted, the system displays an alert with clear guidance and automatically opens the **Manual Vehicle Selector** dropdowns, allowing the customer to select their vehicle by Make, Model, Year, and Engine Size without abandonment.
 
-#### Q11: How does the "Vehicle Fit Products" vs "All Products" toggle work, and how are counts kept consistent?
+#### Q12: How does the "Vehicle Fit Products" vs "All Products" toggle work, and how are counts kept consistent?
 > **Answer:**  
 > - When fitment is active and the customer views **Vehicle Fit Products**, the catalog service filters results strictly through the active vehicle's TecDoc component targets (`fetchProductsWithBrandSort` with `vrmFilter`). For example, searching `"battery 123"` for MINI Countryman (`AK18WEX`) returns exactly the **5 verified AGM batteries**.
 > - When the customer switches to **All Products**, the catalog displays all matching products (**281** total batteries), with the 5 compatible items highlighted with green checkmark badges and the remaining 276 marked with red `✕ Does not fit` badges.
 > - The tab pills display `Vehicle Fit Products (5)` and `All Products (281)` across both views, ensuring numbers never jump or glitch.
 
-#### Q12: How are Universal Fit products (screenwash, engine oil, tools, cleaning wipes) differentiated from vehicle-specific parts?
+#### Q13: How are Universal Fit products (screenwash, engine oil, tools, cleaning wipes) differentiated from vehicle-specific parts?
 > **Answer:**  
 > In [scripts/catalog-service.js](file:///d:/accs/gsf-eds-store/scripts/catalog-service.js#L116-L172), `isUniversalProduct()` inspects product metadata, category IDs, and automotive keywords. Universal products are automatically granted universal fitment and display a distinct blue badge:  
 > `🌐 Universal Fit – Fits All Vehicles`. They appear in both Vehicle Fit and All Products views.
 
-#### Q13: How does the system handle multi-level category navigation (e.g. Car Parts -> Braking -> Brake Pads)?
+#### Q14: How does the system handle multi-level category navigation (e.g. Car Parts -> Braking -> Brake Pads)?
 > **Answer:**  
 > Automotive catalogs require structured hierarchies. In [blocks/product-list/product-list.js](file:///d:/accs/gsf-eds-store/blocks/product-list/product-list.js#L345-L370):
 > - If an author navigates to a **Parent Department** (e.g. *Braking*), the page renders a visual subcategory drilldown with section cards.
@@ -256,7 +295,7 @@ flowchart TD
 
 ### Category D: Security, Performance & Scalability
 
-#### Q14: How does the search interface protect against XSS and SQL injection attacks?
+#### Q15: How does the search interface protect against XSS and SQL injection attacks?
 > **Answer:**  
 > All search inputs across the storefront (Header search, inline PLP toolbar search, category filter, and PDP SKU lookup) pass through [scripts/sanitize.js](file:///d:/accs/gsf-eds-store/scripts/sanitize.js):
 > 1. Strips ASCII control characters and null bytes (`\x00-\x1F`).
@@ -267,11 +306,11 @@ flowchart TD
 > 6. Trims and caps queries to 80 characters.
 > 7. Applies `escapeHtml()` whenever user terms are inserted into the DOM.
 
-#### Q15: How does the storefront handle traffic surges during promotions or high-demand periods?
+#### Q16: How does the storefront handle traffic surges during promotions or high-demand periods?
 > **Answer:**  
 > Because EDS serves cached static HTML directly from globally distributed CDN POPs (Fastly / Cloudflare), edge capacity is essentially infinite. Even if thousands of concurrent users land on the homepage or landing pages simultaneously, backend commerce infrastructure is completely shielded from static page traffic.
 
-#### Q16: How are Core Web Vitals and user performance monitored in production?
+#### Q17: How are Core Web Vitals and user performance monitored in production?
 > **Answer:**  
 > EDS includes **Real User Monitoring (RUM)** via `sampleRUM()`. It samples authentic end-user sessions and captures LCP, FID/INP, CLS, and page performance without third-party script bloat. Metrics are streamed to Adobe's RUM dashboard, giving engineering and marketing visibility into live performance across regions and devices.
 
@@ -279,7 +318,7 @@ flowchart TD
 
 ### Category E: Production Rollout, Roadmap & Governance
 
-#### Q17: What are the remaining steps to transition this POC into a live commercial site?
+#### Q18: What are the remaining steps to transition this POC into a live commercial site?
 > **Answer:**  
 > The roadmap to production encompasses:
 > 1. **Cart & Checkout Integration:** Connecting mini-cart, customer login, and checkout steps to Adobe Commerce or Adobe Commerce drop-in checkout components.
@@ -288,7 +327,7 @@ flowchart TD
 > 4. **Live Search / Algolia Integration:** Connecting Adobe Commerce Live Search or Algolia for faceted AI search suggestions and merchandising rules.
 > 5. **Branch Locator / Store Finder:** Enhancing store finder for 180+ GSF branch locations with stock checks.
 
-#### Q18: How does code quality and testing governance operate in this project?
+#### Q19: How does code quality and testing governance operate in this project?
 > **Answer:**  
 > The repository enforces strict quality standards:
 > - **Zero-dependency automated unit tests** using Node.js native test runner (`node:test`).
